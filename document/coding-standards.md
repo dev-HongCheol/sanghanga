@@ -4,7 +4,54 @@
 
 ### ✅ 문서화
 
-1. **함수 JSDoc**: 모든 함수에 목적, `@param`, `@returns` 필수
+1. **파일 헤더 주석**: 모든 파일 최상단에 파일 설명 필수 (테스트 파일 제외)
+   ```typescript
+   /**
+    * @fileoverview 주문 관련 API 함수
+    * @description 키움증권 API를 호출하여 주문을 전송하고 결과를 반환합니다
+    */
+
+   import { ... };
+   ```
+
+   **예외**: `*.test.ts`, `*.test.tsx` 파일은 헤더 주석 불필요
+
+   **페이지/레이아웃 파일**:
+   ```typescript
+   /**
+    * @fileoverview 주문 페이지
+    * @description 사용자가 주식 주문을 입력하고 전송하는 페이지
+    */
+
+   export default function OrderPage() {
+   	// ...
+   }
+   ```
+
+   **컴포넌트 파일**:
+   ```typescript
+   /**
+    * @fileoverview 주문 폼 컴포넌트
+    * @description 주문 정보를 입력받는 폼 컴포넌트 (Zod + React Hook Form)
+    */
+   "use client";
+
+   import { ... };
+   ```
+
+   **타입 정의 파일**:
+   ```typescript
+   /**
+    * @fileoverview 주문 관련 타입 정의
+    * @description 주문 요청/응답 타입 및 주문 상태 타입
+    */
+
+   export interface OrderRequest {
+   	// ...
+   }
+   ```
+
+2. **함수 JSDoc**: 모든 함수에 목적, `@param`, `@returns` 필수
    ```typescript
    /**
     * 주문을 전송합니다
@@ -16,7 +63,7 @@
    };
    ```
 
-2. **인터페이스 프로퍼티**: 각 프로퍼티에 설명 주석 필수
+3. **인터페이스 프로퍼티**: 각 프로퍼티에 설명 주석 필수
    ```typescript
    interface OrderRequest {
    	/** 종목 코드 (예: '005930') */
@@ -28,7 +75,7 @@
    }
    ```
 
-3. **5줄 이상 분기문**: 복잡한 로직에 설명 주석 필수
+4. **5줄 이상 분기문**: 복잡한 로직에 설명 주석 필수
    ```typescript
    // 체결 상태에 따른 처리
    // - pending: 대기 중 (아무 작업 안 함)
@@ -531,6 +578,7 @@ docs/update-readme
 ```
 document/prd/{기능명}/
 ├── prd.md              # PRD 본문
+├── test-spec.md        # 테스트 명세 (Gemini용)
 ├── ui-capture.png      # UI 캡처 (있다면)
 └── api-spec.md         # API 명세 (있다면)
 ```
@@ -559,6 +607,9 @@ document/prd/{기능명}/
 - Server Actions vs Route Handlers
 - Zod + React Hook Form (폼 검증)
 
+## 참고 문서
+- [test-spec.md](./test-spec.md) - 테스트 명세 (Gemini용)
+
 ## 구현 체크리스트
 > **중요**: 각 항목을 완료할 때마다 실시간으로 체크 표시 (`- [x]`)를 업데이트하세요.
 
@@ -582,6 +633,7 @@ document/prd/{기능명}/
 - [ ] E2E 테스트 작성 (선택사항)
 
 ### 문서
+- [ ] 파일 헤더 주석 작성
 - [ ] JSDoc 주석 작성
 - [ ] README 업데이트 (필요시)
 - [ ] `document/index.md` 상태 업데이트
@@ -591,12 +643,30 @@ document/prd/{기능명}/
 2. ...
 ```
 
+### test-spec.md 작성 규칙
+
+**작성 시점**: 기능 구현 완료 후, 테스트 코드 작성 전
+
+**작성 내용**:
+1. **문서 정보**: 버전, 날짜, PRD 버전
+2. **변경 이력**: PRD 변경 시 영향받는 테스트 추적
+3. **테스트 범위**: 단위/통합/E2E 테스트 목록
+4. **테스트 케이스 상세**: 각 테스트의 요구사항, 예상 코드, Mock 데이터
+5. **상태 표시**: ✅ 유지, 🔄 변경됨, 🆕 신규, ❌ 삭제됨
+6. **Gemini 작업 가이드**: 테스트 작성 순서, 완료 기준, 주의사항
+
+**PRD 변경 시**:
+- test-spec.md의 변경 이력 테이블 업데이트
+- 영향받는 테스트 케이스에 상태 표시 (🔄 변경됨)
+- 변경/추가/삭제할 테스트를 명확히 명시
+
 ### 체크리스트 업데이트 규칙
 
 **실시간 업데이트 필수**:
 - 각 구현 항목을 완료할 때마다 **즉시** PRD 파일의 체크리스트를 업데이트하세요
 - 완료된 항목: `- [ ]` → `- [x]`
-- 모든 체크리스트가 완료(`- [x]`)되면 `document/index.md`의 상태를 ✅ 완료로 변경
+- 모든 구현 체크리스트가 완료(`- [x]`)되면 test-spec.md 작성
+- 테스트 코드까지 완료되면 `document/index.md`의 상태를 ✅ 완료로 변경
 
 **예시**:
 ```markdown
@@ -635,6 +705,7 @@ PRD 작성/수정 시 반드시 `document/index.md`에 등록:
 
 ### 코드 작성 중
 
+- [ ] **파일 헤더 주석** (모든 파일 최상단에 @fileoverview, @description)
 - [ ] 함수 JSDoc 주석
 - [ ] 인터페이스 프로퍼티 주석
 - [ ] 복잡한 로직 설명 주석

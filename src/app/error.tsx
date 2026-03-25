@@ -1,3 +1,7 @@
+/**
+ * @fileoverview 에러 페이지
+ * @description 애플리케이션에서 에러 발생 시 표시되는 페이지 (Client Component)
+ */
 "use client";
 
 import { useEffect } from "react";

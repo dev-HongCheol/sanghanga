@@ -1,4 +1,9 @@
 /**
+ * @fileoverview 공통 타입 정의
+ * @description API 응답, 페이지네이션 등 프로젝트 전반에서 사용하는 공통 타입
+ */
+
+/**
  * API 응답 타입
  */
 export interface ApiResponse<T = unknown> {

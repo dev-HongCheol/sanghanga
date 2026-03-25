@@ -1,3 +1,8 @@
+/**
+ * @fileoverview 루트 레이아웃
+ * @description 애플리케이션의 최상위 레이아웃으로 모든 페이지에 공통으로 적용됩니다
+ */
+
 import type { Metadata } from "next";
 import "./globals.css";
 

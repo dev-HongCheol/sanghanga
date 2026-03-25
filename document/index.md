@@ -8,6 +8,7 @@
 | **설치 및 설정**  | 환경 설정, Docker 설정, 키움 API 설정      | [setup.md](./setup.md)                       |
 | **개발 가이드**   | FSD 구조, Next.js 개발, API 패턴           | [development.md](./development.md)           |
 | **코딩 규칙**     | 필수 준수 사항, 파일 네이밍, PRD 작성 규칙 | [coding-standards.md](./coding-standards.md) |
+| **테스트 표준**   | 테스트 프레임워크, 교육용 주석 규칙        | [testing-standards.md](./testing-standards.md) |
 | **API 사용법**    | 키움 REST API, OAuth 2.0, WebSocket        | [api-guide.md](./api-guide.md)               |
 
 ## 📋 PRD 목록

@@ -1,3 +1,8 @@
+/**
+ * @fileoverview 공통 유틸리티 함수
+ * @description Tailwind CSS 클래스 병합 등 프로젝트 전반에서 사용하는 유틸리티 함수
+ */
+
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 

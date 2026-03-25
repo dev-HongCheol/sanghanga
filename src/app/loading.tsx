@@ -1,4 +1,9 @@
 /**
+ * @fileoverview 로딩 페이지
+ * @description 페이지 로딩 중 표시되는 스피너 컴포넌트
+ */
+
+/**
  * 로딩 페이지
  */
 export default function Loading() {

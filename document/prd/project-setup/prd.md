@@ -181,6 +181,7 @@
 - [architecture.md](../../architecture.md) - FSD 아키텍처 개요
 - [coding-standards.md](../../coding-standards.md) - 코딩 규칙
 - [development.md](../../development.md) - 개발 가이드
+- [test-spec.md](./test-spec.md) - 테스트 명세 (Gemini용)
 - [Next.js 공식 문서](https://nextjs.org/docs)
 - [FSD 공식 문서](https://feature-sliced.design/)
 - [Biome 공식 문서](https://biomejs.dev/)

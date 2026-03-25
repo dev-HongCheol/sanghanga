@@ -1,4 +1,9 @@
 /**
+ * @fileoverview 홈 페이지
+ * @description 애플리케이션의 메인 랜딩 페이지
+ */
+
+/**
  * 홈 페이지
  */
 export default function HomePage() {
