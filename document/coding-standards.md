@@ -361,48 +361,125 @@ export default async function TradePage() {
 }
 ```
 
-## ESLint & Prettier 설정
+## Biome 설정
 
-### .eslintrc.json
+### biome.json
 
 ```json
 {
-	"extends": ["next/core-web-vitals", "next/typescript"],
-	"rules": {
-		"@typescript-eslint/no-unused-vars": "error",
-		"@typescript-eslint/no-explicit-any": "error",
-		"@typescript-eslint/explicit-function-return-type": "off",
-		"react-hooks/rules-of-hooks": "error",
-		"react-hooks/exhaustive-deps": "warn"
+	"$schema": "https://biomejs.dev/schemas/1.9.4/schema.json",
+	"vcs": {
+		"enabled": true,
+		"clientKind": "git",
+		"useIgnoreFile": true
+	},
+	"files": {
+		"ignoreUnknown": false,
+		"ignore": [".next", "node_modules", "dist", "build"]
+	},
+	"formatter": {
+		"enabled": true,
+		"indentStyle": "tab",
+		"indentWidth": 2,
+		"lineWidth": 100
+	},
+	"linter": {
+		"enabled": true,
+		"rules": {
+			"recommended": true,
+			"suspicious": {
+				"noExplicitAny": "error"
+			},
+			"correctness": {
+				"noUnusedVariables": "error",
+				"useHookAtTopLevel": "error"
+			}
+		}
+	},
+	"javascript": {
+		"formatter": {
+			"semicolons": "always",
+			"quoteStyle": "double",
+			"trailingCommas": "es5",
+			"arrowParentheses": "always"
+		}
+	},
+	"organizeImports": {
+		"enabled": true
 	}
 }
 ```
 
-### .prettierrc
+### VSCode 설정 (.vscode/settings.json)
 
 ```json
 {
-	"semi": true,
-	"singleQuote": false,
-	"tabWidth": 2,
-	"useTabs": true,
-	"trailingComma": "es5",
-	"printWidth": 100,
-	"arrowParens": "always"
+	"editor.defaultFormatter": "biomejs.biome",
+	"editor.formatOnSave": true,
+	"editor.codeActionsOnSave": {
+		"quickfix.biome": "explicit",
+		"source.organizeImports.biome": "explicit"
+	},
+	"[javascript]": {
+		"editor.defaultFormatter": "biomejs.biome"
+	},
+	"[javascriptreact]": {
+		"editor.defaultFormatter": "biomejs.biome"
+	},
+	"[typescript]": {
+		"editor.defaultFormatter": "biomejs.biome"
+	},
+	"[typescriptreact]": {
+		"editor.defaultFormatter": "biomejs.biome"
+	},
+	"[json]": {
+		"editor.defaultFormatter": "biomejs.biome"
+	},
+	"[jsonc]": {
+		"editor.defaultFormatter": "biomejs.biome"
+	}
+}
+```
+
+### VSCode 권장 확장 프로그램 (.vscode/extensions.json)
+
+```json
+{
+	"recommendations": [
+		"biomejs.biome",
+		"bradlc.vscode-tailwindcss",
+		"usernamehw.errorlens"
+	]
 }
 ```
 
 ### 사용
 
 ```bash
-# 검사
-pnpm lint
+# Lint 검사
+pnpm check
 
-# 자동 수정
-pnpm lint:fix
+# Lint 자동 수정
+pnpm check:fix
 
 # 포맷팅
 pnpm format
+
+# Lint + 포맷팅 (CI용)
+pnpm check:ci
+```
+
+### package.json 스크립트
+
+```json
+{
+	"scripts": {
+		"check": "biome check .",
+		"check:fix": "biome check --write .",
+		"format": "biome format --write .",
+		"check:ci": "biome ci ."
+	}
+}
 ```
 
 ## Git 규칙
