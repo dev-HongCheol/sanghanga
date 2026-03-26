@@ -32,8 +32,15 @@
 2. `document/index.md`에 등록 (상태: 📝 작성중)
 3. 구현하면서 **PRD 체크리스트 실시간 업데이트** (`- [ ]` → `- [x]`)
 4. **구현 완료 후 반드시 테스트 명세 작성** (`test-spec-unit.md`, `test-spec-integration.md`)
-5. Gemini에게 테스트 코드 작성 요청
-6. 테스트 완료 시 `document/index.md` 상태 변경 (📝 → 🚧 → ✅)
+   - 새 테스트 명세 작성
+   - **기존 코드 변경 시**: 영향받는 기존 테스트 명세에 deprecated 표시
+5. 사용자가 Gemini에게 테스트 명세 전달
+6. Gemini가 테스트 코드 작성 및 실행
+7. 테스트 실패 시:
+   - Gemini → 사용자: 문제 보고 (운영 코드 버그 / 명세 오류 / 테스트 코드 버그)
+   - 사용자 → Claude: 운영 코드 또는 명세 수정 요청 (필요시)
+   - 사용자 → Gemini: 재실행 또는 재작성 요청
+8. 테스트 완료 시 `document/index.md` 상태 변경 (📝 → 🚧 → ✅)
 
 **필수 규칙**:
 - PRD 없는 구현 금지
@@ -41,6 +48,10 @@
 - **테스트 명세는 간결하게**: 요구사항 + 테스트 케이스 목록 + 핵심 패턴 1-2줄만
   - ❌ 전체 코드 작성 금지 (토큰 낭비)
   - ✅ "무엇을" 테스트할지만 명시, "어떻게"는 Gemini가 판단
+- **기존 코드 변경 시 테스트 명세 관리 책임**:
+  - 영향받는 기존 테스트 명세 찾기
+  - deprecated 표시 및 대체 테스트 명시
+  - 새 테스트 명세에 영향도 기록
 
 ### 3. FSD 아키텍처
 
@@ -235,6 +246,89 @@ export async function POST(request: NextRequest) {
 }
 ```
 
+## 테스트 명세 관리
+
+### 신규 기능 구현 시
+
+1. **구현 완료 후 테스트 명세 작성**
+   - `test-spec-unit.md`: 단위 테스트 명세
+   - `test-spec-integration.md`: 통합 테스트 명세
+   - 테스트 대상, 케이스, 핵심 패턴만 간결하게
+
+2. **사용자가 Gemini에게 전달**
+   - Gemini는 명세를 보고 테스트 코드 작성 (`tests/` 폴더)
+
+### 기존 코드 변경 시 (중요!)
+
+**시나리오**: layout-sidebar 구현 중 `app/page.tsx`를 `app/(auth)/page.tsx`로 변경
+
+1. **영향도 파악**
+   - 변경된 파일: `app/page.tsx` → `app/(auth)/page.tsx`
+   - 영향받는 기존 테스트: `project-setup/test-spec.md` > TC-INT-002
+
+2. **새 테스트 명세에 영향도 명시** (`layout-sidebar/test-spec-integration.md`)
+   ```markdown
+   ## 영향받는 기존 테스트
+
+   ⚠️ 이 PRD는 다음 기존 테스트를 대체합니다:
+   - `document/prd/project-setup/test-spec.md` > TC-INT-002 (홈 페이지)
+     - 변경 내용: `app/page.tsx` → `app/(auth)/page.tsx` (이동 + 내용 변경)
+     - 조치: 아래 테스트 케이스로 대체됨
+
+   ### 7. 메인 페이지 렌더링 (기존 TC-INT-002 대체)
+   - [ ] app/(auth)/page.tsx가 에러 없이 렌더링됨
+   - [ ] "대시보드" h1 제목이 표시됨
+   ```
+
+3. **기존 테스트 명세에 deprecated 표시** (`project-setup/test-spec.md`)
+   ```markdown
+   ## 변경 이력
+   | 버전 | 날짜 | 변경 내용 | 영향받는 테스트 | 담당 |
+   |------|------|-----------|-----------------|------|
+   | v1.0 | 2026-03-25 | 초기 작성 | - | Claude |
+   | v2.0 | 2026-03-27 | TC-INT-002 deprecated | TC-INT-002 | Claude |
+
+   ### TC-INT-002: 홈 페이지 (DEPRECATED)
+
+   ⚠️ **상태**: 🗑️ Deprecated (v2.0, 2026-03-27)
+   ⚠️ **이유**: layout-sidebar PRD에서 페이지 구조 변경
+   ⚠️ **대체 테스트**: `document/prd/layout-sidebar/test-spec-integration.md` > "메인 페이지 렌더링"
+   ⚠️ **파일 변경**: `app/page.tsx` → `app/(auth)/page.tsx`
+   ```
+
+4. **Gemini가 테스트 코드 처리**
+   - 새 테스트 작성: `tests/integration/layout/main-page.test.tsx`
+   - 기존 테스트 스킵: `tests/integration/app/page.test.tsx`에 `describe.skip` 추가
+
+### Gemini와의 협업 프로세스
+
+**역할 분담**:
+- **Claude**: 운영 코드 (`src/`), 테스트 명세 (`test-spec-*.md`), 문서
+- **Gemini**: 테스트 코드 (`tests/`), 테스트 코드 버그 수정
+- **사용자**: 판단 및 중재
+
+**테스트 실패 시 플로우**:
+```
+Gemini: 테스트 실행 → ❌ 실패
+         ↓
+Gemini → 사용자: 문제 보고
+         - 운영 코드 버그: "AppSidebar.tsx:45에서 로고 링크가 잘못됨"
+         - 명세 오류: "test-spec에 '로고는 /로 이동'인데 실제는 /dashboard"
+         - 테스트 코드 버그: "내 selector가 잘못됨" (직접 수정)
+         ↓
+사용자: 판단
+         ↓
+사용자 → Claude: 운영 코드 또는 명세 수정 요청 (필요 시)
+         ↓
+Claude: 수정 완료
+         ↓
+사용자 → Gemini: "코드 수정했어, 재실행해"
+         ↓
+Gemini: 재실행 → ✅ 통과
+```
+
+**중요**: Gemini는 절대로 `src/` 폴더를 수정할 수 없습니다 (GEMINI.md 규칙).
+
 ## 작업 프로세스
 
 ### 새 기능 추가
@@ -243,9 +337,11 @@ export async function POST(request: NextRequest) {
 2. **문서 참조** → architecture.md, coding-standards.md
 3. **FSD 레이어 판단** → widgets/features/entities
 4. **구현** → Server Component 우선, JSDoc 필수, **PRD 체크리스트 실시간 업데이트**
-5. **테스트** → PRD 시나리오 기반
-6. **문서 업데이트** → PRD 모두 체크 완료, `document/index.md` 상태 변경
-7. **품질 검사** → lint, test, build
+5. **영향도 확인** → 기존 파일 변경 시 영향받는 테스트 명세 파악
+6. **테스트 명세 작성** → 새 명세 + 기존 명세 deprecated (필요 시)
+7. **사용자가 Gemini에게 전달** → 테스트 코드 작성
+8. **문서 업데이트** → PRD 모두 체크 완료, `document/index.md` 상태 변경
+9. **품질 검사** → lint, test, build
 
 ### 버그 수정
 

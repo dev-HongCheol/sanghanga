@@ -1,34 +1,37 @@
 import { render, screen } from "@testing-library/react";
+import HomePage from "app/(auth)/page";
 import { describe, expect, it } from "vitest";
-// app/page를 사용하여 소스 파일 참조 (루트 app/ 디렉토리)
-import HomePage from "app/page";
 
-describe("홈 페이지 기본 구조", () => {
-	// TC-INT-002: 구조 검증 중심 (텍스트 내용은 검증하지 않음)
-	
+/**
+ * @fileoverview 메인 대시보드 페이지 통합 테스트
+ * @description 대시보드의 기본 레이아웃 및 필수 텍스트 렌더링을 검증합니다.
+ *
+ * [학습 포인트]
+ * - 이 테스트는 layout-sidebar 도입 이후 변경된 대시보드 구조를 반영합니다.
+ * - getByRole("heading")을 통해 시맨틱한 HTML 구조를 검증합니다.
+ */
+
+describe("메인 대시보드 페이지", () => {
 	it("페이지가 에러 없이 렌더링된다", () => {
 		const { container } = render(<HomePage />);
 		expect(container).toBeInTheDocument();
 	});
 
-	it("메인 제목(h1) 요소가 존재한다", () => {
+	it("'대시보드' 제목(h1)이 정상적으로 표시된다", () => {
 		render(<HomePage />);
-		// getByRole: 구체적인 텍스트 대신 'heading' 역할을 가진 level 1(h1) 요소를 찾습니다.
-		const heading = screen.getByRole("heading", { level: 1 });
+		const heading = screen.getByRole("heading", { level: 1, name: "대시보드" });
 		expect(heading).toBeInTheDocument();
 	});
 
-	it("내비게이션 링크가 최소 1개 이상 존재한다", () => {
+	it("플랫폼 설명 문구가 포함되어야 한다", () => {
 		render(<HomePage />);
-		// 'link' 역할을 가진 모든 요소를 찾아 개수를 확인합니다.
-		const links = screen.getAllByRole("link");
-		expect(links.length).toBeGreaterThan(0);
+		const description = screen.getByText(/키움증권 REST API를 활용한 실시간 웹 트레이딩 플랫폼/i);
+		expect(description).toBeInTheDocument();
 	});
 
-	it("푸터 영역이 존재한다", () => {
+	it("위젯을 위한 그리드 컨테이너가 존재해야 한다", () => {
 		const { container } = render(<HomePage />);
-		// footer 태그 또는 'contentinfo' 역할을 가진 푸터 요소를 찾습니다.
-		const footer = container.querySelector("footer") || screen.queryByRole("contentinfo");
-		expect(footer).toBeTruthy();
+		const gridContainer = container.querySelector(".grid");
+		expect(gridContainer).toBeInTheDocument();
 	});
 });

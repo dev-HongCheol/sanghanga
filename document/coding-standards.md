@@ -677,6 +677,13 @@ document/prd/{기능명}/
 ### POST /api/order
 ...
 
+## 영향도 분석 (Impact Analysis)
+> **중요**: 새 기능 추가가 기존 시스템에 미칠 수 있는 영향을 분석합니다.
+- **기존 기능**: (예: 알림 기능 추가 시 사이드바 레이아웃 영향 여부)
+- **공유 컴포넌트**: (예: `shared/ui/button.tsx` 수정 시 전체 UI 영향)
+- **데이터/스토어**: (예: `auth.store.ts` 수정 시 로그인 상태 참조하는 모든 위젯)
+- **회귀 테스트**: (예: 작업 완료 후 `사이드바 위젯` 테스트 재실행 필요)
+
 ## 기술 스택
 - Server Component vs Client Component
 - Server Actions vs Route Handlers
