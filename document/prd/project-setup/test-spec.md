@@ -11,6 +11,7 @@
 | 버전 | 날짜 | 변경 내용 | 영향받는 테스트 | 담당 |
 |------|------|-----------|-----------------|------|
 | v1.0 | 2026-03-25 | 초기 작성 | - | Claude |
+| v2.0 | 2026-03-27 | TC-INT-002 deprecated (layout-sidebar로 대체) | TC-INT-002 | Claude |
 
 ## 개요
 
@@ -59,7 +60,7 @@ tests/
 
 ### 통합 테스트 (Integration Tests)
 - [x] TC-INT-001: 루트 레이아웃 렌더링
-- [x] TC-INT-002: 홈 페이지 렌더링 및 링크
+- [~] TC-INT-002: 홈 페이지 (🗑️ DEPRECATED - layout-sidebar로 대체)
 - [x] TC-INT-003: 에러 페이지 동작
 - [x] TC-INT-004: 로딩 페이지 렌더링
 
@@ -289,12 +290,16 @@ describe("루트 레이아웃", () => {
 
 ---
 
-### TC-INT-002: 홈 페이지 기본 구조
-**상태**: 🆕 신규 (v1.0)
-**우선순위**: 높음
-**범위**: 구조 검증 (세부 콘텐츠는 "홈 페이지 콘텐츠 PRD"에서 별도 테스트)
+### TC-INT-002: 홈 페이지 기본 구조 (DEPRECATED)
 
-**요구사항**:
+⚠️ **상태**: 🗑️ Deprecated (v2.0, 2026-03-27)
+⚠️ **이유**: layout-sidebar PRD에서 페이지 구조를 변경
+⚠️ **대체 테스트**: [`document/prd/layout-sidebar/test-spec-integration.md`](../layout-sidebar/test-spec-integration.md) > "메인 페이지 렌더링"
+⚠️ **파일 변경**: `app/page.tsx` → `app/(auth)/page.tsx` (내용 변경)
+
+---
+
+**원래 요구사항** (참고용):
 - 홈 페이지가 에러 없이 렌더링되어야 한다
 - 메인 제목(h1) 요소가 존재해야 한다
 - 최소 1개 이상의 링크가 존재해야 한다
