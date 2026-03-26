@@ -1,4 +1,4 @@
-import * as path from "path";
+import * as path from "node:path";
 import * as fs from "fs-extra";
 import * as XLSX from "xlsx";
 
@@ -19,7 +19,7 @@ interface ApiInfo {
 	relativeFilePath?: string;
 }
 
-function clean(val: any): string {
+function clean(val: unknown): string {
 	if (val === undefined || val === null) return "";
 	return String(val).trim().replace(/\r\n/g, "\n");
 }
@@ -31,22 +31,22 @@ async function parseExcel() {
 
 	// 1. 목차(첫 번째 시트) 파싱
 	const indexSheet = workbook.Sheets[sheetNames[0]];
-	const indexData: any[] = XLSX.utils.sheet_to_json(indexSheet);
+	const indexData = XLSX.utils.sheet_to_json(indexSheet) as Record<string, unknown>[];
 
 	const apiList: ApiInfo[] = [];
 
 	console.log("[Parser] Analyzing index sheet...");
 
 	for (const row of indexData) {
-		const apiId = clean(row["__EMPTY"]); // Column B: API ID
+		const apiId = clean(row.__EMPTY); // Column B: API ID
 		// 'au10001' 또는 'ka'로 시작하는 ID만 필터링
 		if (apiId && (apiId.startsWith("au") || apiId.startsWith("ka"))) {
 			apiList.push({
 				apiId: apiId,
-				apiName: clean(row["__EMPTY_1"]), // Column C: API 명
-				mainCategory: clean(row["__EMPTY_2"]), // Column D: 대분류
-				subCategory: clean(row["__EMPTY_3"]), // Column E: 중분류 (없을 경우 대분류와 병합되었을 수 있음)
-				url: clean(row["__EMPTY_4"]), // Column F: URL
+				apiName: clean(row.__EMPTY_1), // Column C: API 명
+				mainCategory: clean(row.__EMPTY_2), // Column D: 대분류
+				subCategory: clean(row.__EMPTY_3), // Column E: 중분류 (없을 경우 대분류와 병합되었을 수 있음)
+				url: clean(row.__EMPTY_4), // Column F: URL
 			});
 		}
 	}
@@ -65,7 +65,7 @@ async function parseExcel() {
 		}
 
 		const sheet = workbook.Sheets[sheetName];
-		const rows: any[][] = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+		const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 }) as unknown[][];
 
 		let markdown = `# ${api.apiId} - ${api.apiName}\n\n`;
 
@@ -80,33 +80,39 @@ async function parseExcel() {
 
 			// 섹션 감지 (이미지 기반 키워드 매칭)
 			if (firstCol === "API 정보") {
-				markdown += `## 1. API 정보\n| 항목 | 내용 |\n| :--- | :--- |\n`;
+				markdown += "## 1. API 정보\n| 항목 | 내용 |\n| :--- | :--- |\n";
 				currentSection = "API_INFO";
 				continue;
-			} else if (firstCol === "기본정보") {
-				markdown += `\n## 2. 기본 정보\n| 항목 | 내용 |\n| :--- | :--- |\n`;
+			}
+			if (firstCol === "기본정보") {
+				markdown += "\n## 2. 기본 정보\n| 항목 | 내용 |\n| :--- | :--- |\n";
 				currentSection = "BASE_INFO";
 				continue;
-			} else if (firstCol === "개요") {
-				markdown += `\n## 3. 개요\n`;
+			}
+			if (firstCol === "개요") {
+				markdown += "\n## 3. 개요\n";
 				currentSection = "SUMMARY";
 				continue;
-			} else if (firstCol === "Request") {
-				markdown += `\n## 4. Request\n`;
+			}
+			if (firstCol === "Request") {
+				markdown += "\n## 4. Request\n";
 				currentSection = "REQUEST_TABLE";
 				tableHeader = [];
 				continue;
-			} else if (firstCol === "Response") {
-				markdown += `\n## 5. Response\n`;
+			}
+			if (firstCol === "Response") {
+				markdown += "\n## 5. Response\n";
 				currentSection = "RESPONSE_TABLE";
 				tableHeader = [];
 				continue;
-			} else if (firstCol === "Request Example") {
-				markdown += `\n## 6. Request Example\n\`\`\`json\n`;
+			}
+			if (firstCol === "Request Example") {
+				markdown += "\n## 6. Request Example\n```json\n";
 				currentSection = "REQ_EXAMPLE";
 				continue;
-			} else if (firstCol === "Response Example") {
-				markdown += `\n## 7. Response Example\n\`\`\`json\n`;
+			}
+			if (firstCol === "Response Example") {
+				markdown += "\n## 7. Response Example\n```json\n";
 				currentSection = "RES_EXAMPLE";
 				continue;
 			}
@@ -175,8 +181,8 @@ async function parseExcel() {
 
 	// 2. index.md 생성
 	console.log("[Parser] Generating index.md...");
-	let indexMarkdown = `# 키움 REST API 전체 목록\n\n`;
-	indexMarkdown += `이 문서는 자동으로 생성되었습니다. 상세 내용은 각 링크를 참조하세요.\n\n`;
+	let indexMarkdown = "# 키움 REST API 전체 목록\n\n";
+	indexMarkdown += "이 문서는 자동으로 생성되었습니다. 상세 내용은 각 링크를 참조하세요.\n\n";
 
 	// 대분류 > 중분류 그룹화
 	const grouped: Record<string, Record<string, ApiInfo[]>> = {};
@@ -192,12 +198,12 @@ async function parseExcel() {
 		indexMarkdown += `## ${main}\n\n`;
 		for (const sub of Object.keys(grouped[main]).sort()) {
 			indexMarkdown += `### ${sub}\n\n`;
-			indexMarkdown += `| API ID | API 명 | 상세 문서 |\n`;
-			indexMarkdown += `| :--- | :--- | :--- |\n`;
+			indexMarkdown += "| API ID | API 명 | 상세 문서 |\n";
+			indexMarkdown += "| :--- | :--- | :--- |\n";
 			for (const api of grouped[main][sub]) {
 				indexMarkdown += `| **${api.apiId}** | ${api.apiName} | [바로가기](${api.relativeFilePath}) |\n`;
 			}
-			indexMarkdown += `\n`;
+			indexMarkdown += "\n";
 		}
 	}
 

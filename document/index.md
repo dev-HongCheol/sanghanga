@@ -21,6 +21,7 @@
 | 프로젝트 초기 설정           | ✅ 완료 | 2026-03-25 | -      | [prd](./prd/project-setup/prd.md)     |
 | 키움 API 인증 및 토큰 관리   | 🚧 진행중 | 2026-03-25 | -      | [prd](./prd/kiwoom-auth/prd.md)       |
 | 실시간 종목조회순위 조회     | 🚧 진행중 | 2026-03-26 | -      | [prd](./prd/stock-ranking/prd.md)     |
+| 전역 레이아웃 및 사이드바    | 🚧 진행중 | 2026-03-27 | -      | [prd](./prd/layout-sidebar/prd.md)    |
 | _예시: 주문 위젯_            | _✅ 완료_ | _2024-01-15_ | _-_    | _[prd](./prd/order-widget/prd.md)_    |
 
 ### 상태 표시
