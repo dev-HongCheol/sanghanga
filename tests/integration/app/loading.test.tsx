@@ -1,6 +1,6 @@
 import { render } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import Loading from "@/app/loading";
+import Loading from "app/loading";
 
 describe("로딩 페이지", () => {
 	it("로딩 페이지가 정상적으로 렌더링된다", () => {

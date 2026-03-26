@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import RootLayout, { metadata } from "@/app/layout";
+import RootLayout, { metadata } from "app/layout";
 
 describe("루트 레이아웃", () => {
 	it("전달된 자식 요소(children)를 정상적으로 렌더링한다", () => {

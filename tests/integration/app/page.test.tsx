@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-// @/app/page를 사용하여 소스 파일 참조
-import HomePage from "@/app/page";
+// app/page를 사용하여 소스 파일 참조 (루트 app/ 디렉토리)
+import HomePage from "app/page";
 
 describe("홈 페이지 기본 구조", () => {
 	// TC-INT-002: 구조 검증 중심 (텍스트 내용은 검증하지 않음)

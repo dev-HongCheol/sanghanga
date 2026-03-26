@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import ErrorPage from "@/app/error";
+import ErrorPage from "app/error";
 
 describe("에러 페이지", () => {
 	const mockError = new Error("테스트 에러 메시지");

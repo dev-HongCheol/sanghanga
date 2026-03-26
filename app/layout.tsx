@@ -4,7 +4,8 @@
  */
 
 import type { Metadata } from "next";
-import "./globals.css";
+import { Providers } from "@/app/providers";
+import "@/app/styles/globals.css";
 
 export const metadata: Metadata = {
 	title: "상한가 - 키움증권 트레이딩 플랫폼",
@@ -20,8 +21,10 @@ export default function RootLayout({
 	children: React.ReactNode;
 }>) {
 	return (
-		<html lang="ko">
-			<body>{children}</body>
+		<html lang="ko" className="dark">
+			<body className="antialiased">
+				<Providers>{children}</Providers>
+			</body>
 		</html>
 	);
 }
