@@ -38,85 +38,64 @@ pnpm start
 # http://localhost:3000
 ```
 
+## 협업 워크플로우 (Claude & Gemini)
+
+본 프로젝트는 두 AI 모델의 전문성을 결합하여 개발 효율성을 극대화합니다.
+
+1. **설계 및 기능 정의 (Claude)**: `document/prd/` 하위에 요구사항(`prd.md`)과 테스트 명세(`test-spec.md`)를 작성합니다.
+2. **코드 구현 (Claude)**: FSD 아키텍처에 따라 `src/` 하위에 비즈니스 로직과 UI를 구현합니다.
+3. **테스트 구현 및 검증 (Gemini)**:
+   - Claude의 `test-spec.md`를 기반으로 `tests/` 폴더에 테스트 코드를 작성합니다.
+   - 작업 진행 중 `test-spec.md`의 체크리스트를 **실시간으로 업데이트**합니다.
+   - 테스트 결과와 커버리지를 문서에 기록하여 최종 검증을 완료합니다.
+4. **품질 확인**: Biome 체크, 타입 체크 및 전체 테스트 통과 여부를 확인합니다.
+
+## 교육 중심 개발 (Educational Development)
+
+사용자가 코드를 통해 기술 스택을 학습할 수 있도록 다음 원칙을 준수합니다.
+
+- **상세한 JSDoc**: 모든 함수와 인터페이스에 역할과 파라미터 설명을 작성합니다.
+- **테스트 코드 주석**: 생소한 테스트 API나 복잡한 모킹 로직에 교육용 주석을 추가합니다.
+- **단계별 가이드**: `test-spec.md`에 Gemini의 작업 순서와 주의사항을 상세히 기술합니다.
+
 ## FSD 아키텍처
 
 ### 디렉토리 구조
 
 ```
-src/
-├── app/                    # Next.js App Router
-│   ├── (auth)/            # 인증 그룹
-│   │   ├── login/
-│   │   │   └── page.tsx   # /login
-│   │   └── layout.tsx
-│   ├── (trading)/         # 트레이딩 그룹
-│   │   ├── trade/
-│   │   │   └── page.tsx   # /trade
-│   │   ├── portfolio/
-│   │   │   └── page.tsx   # /portfolio
-│   │   └── layout.tsx
-│   ├── api/               # Route Handlers
-│   │   ├── auth/
-│   │   │   └── route.ts   # POST /api/auth
-│   │   ├── order/
-│   │   │   └── route.ts   # POST /api/order
-│   │   └── realtime/
-│   │       └── route.ts   # GET /api/realtime (SSE)
-│   ├── layout.tsx         # 루트 레이아웃
-│   ├── page.tsx           # 홈 페이지 (/)
-│   └── error.tsx          # 에러 페이지
+app/                        # Next.js App Router (Routing Only)
+├── (auth)/                # 인증 그룹
+├── (trading)/             # 트레이딩 그룹
+├── api/                   # Route Handlers
+│   ├── auth/
+│   │   └── route.ts       # POST /api/auth
+│   └── realtime/
+│       └── route.ts       # GET /api/realtime (SSE)
+├── layout.tsx             # 루트 레이아웃
+├── page.tsx               # 홈 페이지 (/)
+└── error.tsx              # 에러 페이지
+
+src/                        # FSD 아키텍처 (Business Logic)
+├── app/                    # FSD app 레이어 (Global Config)
+│   ├── providers/         # 전역 Providers (Query, Theme 등)
+│   └── styles/            # 전역 스타일 (globals.css)
 │
 ├── widgets/               # 위젯 계층
-│   ├── ChartWidget/       # 차트 위젯
-│   │   ├── ui/
-│   │   │   └── ChartWidget.tsx
-│   │   ├── model/         # 상태, 로직
-│   │   └── index.ts
-│   ├── OrderWidget/       # 주문 위젯
-│   └── AccountWidget/     # 계좌 위젯
+│   ├── ChartWidget/
+│   └── index.ts
 │
 ├── features/              # 기능 계층
-│   ├── placeOrder/        # 주문하기
-│   │   ├── ui/
-│   │   │   └── PlaceOrderForm.tsx
-│   │   ├── api/
-│   │   │   ├── placeOrder.api.ts
-│   │   │   └── placeOrder.queries.ts
-│   │   ├── actions/
-│   │   │   └── placeOrder.action.ts
-│   │   ├── model/
-│   │   │   └── placeOrder.schema.ts
-│   │   └── index.ts
-│   ├── fetchAccount/      # 계좌 조회
-│   └── updateWatchlist/   # 관심종목 업데이트
+│   ├── placeOrder/
+│   └── index.ts
 │
 ├── entities/              # 엔티티 계층
 │   ├── stock/
-│   │   ├── ui/
-│   │   │   └── StockCard.tsx
-│   │   ├── model/
-│   │   │   ├── stock.types.ts
-│   │   │   └── stock.store.ts
-│   │   └── index.ts
-│   ├── account/
-│   └── order/
+│   └── index.ts
 │
 └── shared/                # 공통 계층
     ├── ui/                # UI 컴포넌트 (Shadcn UI)
-    │   ├── Button.tsx
-    │   ├── Input.tsx
-    │   └── Card.tsx
-    ├── lib/               # 유틸리티
-    │   ├── api.ts         # API 클라이언트
-    │   ├── utils.ts
-    │   └── kiwoom/        # 키움 API
-    │       ├── auth.ts
-    │       ├── api.ts
-    │       └── types.ts
-    ├── config/
-    │   └── constants.ts
+    ├── lib/               # 유틸리티 (kiwoom client 등)
     └── types/
-        └── common.types.ts
 ```
 
 ### 레이어 규칙
@@ -130,6 +109,7 @@ src/
    // ❌ NO
    import { HomePage } from "@/pages/HomePage"; // entities에서 pages import 불가
    ```
+   *참고: 루트 `app/` 폴더는 모든 FSD 레이어를 참조할 수 있는 최상위 계층입니다.*
 
 2. **Public API**: 각 슬라이스는 `index.ts`로 export
    ```typescript
@@ -165,6 +145,9 @@ src/
 
 ## API 개발
 
+> **📋 API 구현 시 필수 참조**: [`document/api/`](./api/README.md) 디렉토리의 상세 명세를 확인하세요.
+> 각 API별 정확한 Request/Response 스키마와 실제 예제가 포함되어 있습니다.
+
 ### TanStack Query
 
 - `xxx.api.ts`: API 함수
@@ -193,11 +176,119 @@ src/
 
 - 유틸리티 클래스 사용
 - `className="flex items-center gap-4"`
+- 다크 모드 대응: `dark:bg-gray-900`
 
-### Shadcn UI
+### Shadcn UI 사용 가이드
+
+**컴포넌트 위치**: `src/shared/ui/*.tsx` (FSD 아키텍처 준수)
+
+#### 컴포넌트 추가
 
 ```bash
-pnpx shadcn@latest add button input card
+# 개별 컴포넌트 추가
+npx shadcn@latest add button
+npx shadcn@latest add card
+npx shadcn@latest add select
+
+# 여러 컴포넌트 한 번에 추가
+npx shadcn@latest add card select alert button
+```
+
+**주의**: 컴포넌트는 자동으로 `src/shared/ui`에 생성됩니다 (`components.json` 설정)
+
+#### 사용 예시
+
+**Card 컴포넌트**:
+```typescript
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/shared/ui/card";
+
+export function MyWidget() {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>제목</CardTitle>
+        <CardDescription>설명</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <p>내용</p>
+      </CardContent>
+    </Card>
+  );
+}
+```
+
+**Select 컴포넌트**:
+```typescript
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/shared/ui/select";
+
+export function MySelect() {
+  return (
+    <Select>
+      <SelectTrigger className="w-[180px]">
+        <SelectValue placeholder="선택하세요" />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="option1">옵션 1</SelectItem>
+        <SelectItem value="option2">옵션 2</SelectItem>
+      </SelectContent>
+    </Select>
+  );
+}
+```
+
+**Alert 컴포넌트**:
+```typescript
+import { Alert, AlertDescription, AlertTitle } from "@/shared/ui/alert";
+import { AlertCircle } from "lucide-react";
+
+export function ErrorAlert() {
+  return (
+    <Alert variant="destructive">
+      <AlertCircle className="h-4 w-4" />
+      <AlertTitle>에러</AlertTitle>
+      <AlertDescription>에러 메시지</AlertDescription>
+    </Alert>
+  );
+}
+```
+
+#### 아이콘 사용
+
+Shadcn UI는 `lucide-react` 아이콘을 사용합니다:
+
+```typescript
+import { Loader2, AlertCircle, Check } from "lucide-react";
+
+// 로딩 스피너
+<Loader2 className="h-4 w-4 animate-spin" />
+
+// 에러 아이콘
+<AlertCircle className="h-4 w-4 text-destructive" />
+```
+
+#### 테마 커스터마이징
+
+`src/app/globals.css`에서 CSS 변수로 테마 색상 변경:
+
+```css
+:root {
+  --background: 0 0% 100%;
+  --foreground: 222.2 84% 4.9%;
+  --primary: 221.2 83.2% 53.3%;
+  /* ... */
+}
+
+.dark {
+  --background: 222.2 84% 4.9%;
+  --foreground: 210 40% 98%;
+  /* ... */
+}
 ```
 
 ## 명령어
@@ -219,4 +310,5 @@ pnpm remove [package] # 제거
 - [architecture.md](./architecture.md) - 전체 아키텍처 개요
 - [coding-standards.md](./coding-standards.md) - 코딩 규칙 및 상세 예시
 - [api-guide.md](./api-guide.md) - 키움 REST API 사용법
+- **[api/](./api/README.md)** - 키움 API 상세 명세 (Request/Response 스키마, 예제)
 - [index.md](./index.md) - 외부 참고 자료 링크

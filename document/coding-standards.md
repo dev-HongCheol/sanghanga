@@ -103,13 +103,15 @@
    yarn add react-query
    ```
 
-2. **Shadcn UI**: `@/shared/ui`로 import
+2. **Shadcn UI**: `@/shared/ui`로 import (kebab-case 파일명)
    ```typescript
    // ✅ OK
-   import { Button } from "@/shared/ui/Button";
+   import { Button } from "@/shared/ui/button";
+   import { Card, CardHeader } from "@/shared/ui/card";
 
    // ❌ NO
-   import { Button } from "@/components/ui/button";
+   import { Button } from "@/components/ui/button";  // 경로 오류
+   import { Button } from "@/shared/ui/Button";      // 파일명 오류 (PascalCase)
    ```
 
 3. **API 파일 네이밍**:
@@ -130,20 +132,21 @@
 
 ## 파일 네이밍
 
-| 종류                | 규칙                   | 예시                        |
-| :------------------ | :--------------------- | :-------------------------- |
-| **컴포넌트**        | `PascalCase.tsx`       | `OrderWidget.tsx`           |
-| **페이지**          | `page.tsx`             | `app/trade/page.tsx`        |
-| **레이아웃**        | `layout.tsx`           | `app/layout.tsx`            |
-| **Route Handler**   | `route.ts`             | `app/api/order/route.ts`    |
-| **Server Action**   | `camelCase.action.ts`  | `placeOrder.action.ts`      |
-| **API**             | `camelCase.api.ts`     | `placeOrder.api.ts`         |
-| **쿼리**            | `camelCase.queries.ts` | `placeOrder.queries.ts`     |
-| **스키마**          | `camelCase.schema.ts`  | `placeOrder.schema.ts`      |
-| **타입**            | `camelCase.types.ts`   | `order.types.ts`            |
-| **스토어**          | `camelCase.store.ts`   | `account.store.ts`          |
-| **훅**              | `useCamelCase.ts`      | `useKiwoomWebSocket.ts`     |
-| **유틸**            | `camelCase.ts`         | `formatPrice.ts`            |
+| 종류                | 규칙                   | 예시                          |
+| :------------------ | :--------------------- | :---------------------------- |
+| **컴포넌트**        | `PascalCase.tsx`       | `OrderWidget.tsx`             |
+| **UI 컴포넌트**     | `kebab-case.tsx`       | `src/shared/ui/button.tsx`    |
+| **페이지**          | `page.tsx`             | `app/trade/page.tsx`          |
+| **레이아웃**        | `layout.tsx`           | `app/layout.tsx`              |
+| **Route Handler**   | `route.ts`             | `app/api/order/route.ts`      |
+| **Server Action**   | `camelCase.action.ts`  | `placeOrder.action.ts`        |
+| **API**             | `camelCase.api.ts`     | `placeOrder.api.ts`           |
+| **쿼리**            | `camelCase.queries.ts` | `placeOrder.queries.ts`       |
+| **스키마**          | `camelCase.schema.ts`  | `placeOrder.schema.ts`        |
+| **타입**            | `camelCase.types.ts`   | `order.types.ts`              |
+| **스토어**          | `camelCase.store.ts`   | `account.store.ts`            |
+| **훅**              | `useCamelCase.ts`      | `useKiwoomWebSocket.ts`       |
+| **유틸**            | `camelCase.ts`         | `formatPrice.ts`              |
 
 ## TypeScript 규칙
 
@@ -262,6 +265,72 @@ export const OrderWidget = ({ accountNo, initialSymbol }: OrderWidgetProps) => {
 	return <div>{/* ... */}</div>;
 };
 ```
+
+### UI 컴포넌트 & 스타일링
+
+**Shadcn UI 필수 사용**:
+```typescript
+// ✅ OK: Shadcn UI 컴포넌트 사용
+import { Card, CardHeader, CardTitle, CardContent } from "@/shared/ui/card";
+import { Button } from "@/shared/ui/button";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/shared/ui/select";
+
+export function MyWidget() {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>제목</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <Button>버튼</Button>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ❌ NO: 직접 HTML + Tailwind 조합
+export function MyWidget() {
+  return (
+    <div className="border rounded-lg p-4">
+      <h2 className="text-lg font-bold">제목</h2>
+      <button className="px-4 py-2 bg-blue-500 text-white rounded">버튼</button>
+    </div>
+  );
+}
+```
+
+**다크 테마 기본 적용**:
+- `className="dark"`가 루트에 설정되어 다크 테마가 기본
+- `dark:` 접두사 불필요 (모든 컴포넌트가 다크 테마 기준)
+- Shadcn UI 컴포넌트는 자동으로 다크 테마 적용
+
+```typescript
+// ✅ OK: 다크 테마 기본 (별도 클래스 불필요)
+<Card>
+  <CardContent>
+    <p className="text-muted-foreground">설명 텍스트</p>
+  </CardContent>
+</Card>
+
+// ❌ NO: dark: 클래스 불필요
+<div className="bg-white dark:bg-gray-900">  // dark: 제거
+  <p className="text-gray-900 dark:text-white">텍스트</p>  // dark: 제거
+</div>
+```
+
+**컴포넌트 설치**:
+```bash
+# 신규 컴포넌트 추가 (자동으로 src/shared/ui에 생성)
+npx shadcn@latest add dialog
+npx shadcn@latest add table
+npx shadcn@latest add form
+```
+
+**사용 가능한 유틸리티 클래스**:
+- `text-muted-foreground`: 보조 텍스트
+- `bg-muted`: 보조 배경
+- `border-border`: 테두리
+- `text-destructive`: 에러/삭제 텍스트
 
 ### 훅 규칙
 
@@ -577,11 +646,17 @@ docs/update-readme
 
 ```
 document/prd/{기능명}/
-├── prd.md              # PRD 본문
-├── test-spec.md        # 테스트 명세 (Gemini용)
-├── ui-capture.png      # UI 캡처 (있다면)
-└── api-spec.md         # API 명세 (있다면)
+├── prd.md                   # PRD 본문
+├── test-spec-unit.md        # 단위 테스트 명세 (Gemini용, 필수)
+├── test-spec-integration.md # 통합 테스트 명세 (Gemini용, 필수)
+├── ui-capture.png           # UI 캡처 (있다면)
+└── api-spec.md              # API 명세 (있다면)
 ```
+
+**필수 규칙**:
+- 모든 PRD는 **반드시** `test-spec-unit.md`와 `test-spec-integration.md`를 포함해야 함
+- 테스트 명세는 **구현 완료 후, 테스트 코드 작성 전**에 Claude가 작성
+- 단위 테스트만 있는 경우에도 두 파일 모두 생성 (integration은 "해당 없음" 명시)
 
 ### PRD 템플릿
 
@@ -643,20 +718,64 @@ document/prd/{기능명}/
 2. ...
 ```
 
-### test-spec.md 작성 규칙
+### test-spec 작성 규칙 (필수)
+
+**⚠️ 중요**: 모든 PRD는 구현 완료 후 반드시 테스트 명세를 작성해야 합니다.
 
 **작성 시점**: 기능 구현 완료 후, 테스트 코드 작성 전
 
-**작성 내용**:
+**파일 분리**:
+- `test-spec-unit.md`: 단위 테스트 (함수, 유틸, 모듈)
+- `test-spec-integration.md`: 통합 테스트 (컴포넌트, API, Route Handler)
+- 두 파일 모두 필수 (해당 없으면 "해당 없음" 명시)
+
+**작성 내용** (각 파일 공통):
 1. **문서 정보**: 버전, 날짜, PRD 버전
 2. **변경 이력**: PRD 변경 시 영향받는 테스트 추적
-3. **테스트 범위**: 단위/통합/E2E 테스트 목록
-4. **테스트 케이스 상세**: 각 테스트의 요구사항, 예상 코드, Mock 데이터
+3. **테스트 범위**: 테스트 케이스 목록 (체크박스)
+4. **테스트 케이스 상세**: 요구사항, 테스트 케이스 목록, Mock 데이터만
 5. **상태 표시**: ✅ 유지, 🔄 변경됨, 🆕 신규, ❌ 삭제됨
 6. **Gemini 작업 가이드**: 테스트 작성 순서, 완료 기준, 주의사항
 
+**중요 원칙**:
+- **예상 코드는 최소화** - 핵심 패턴만 1-2줄, 전체 코드 작성 금지
+- **"무엇을" 테스트할지만 명시** - "어떻게"는 Gemini가 판단
+- Gemini가 testing-standards.md를 참고하여 스스로 구현하도록
+
+**예시**:
+```markdown
+# {기능명} 단위 테스트 명세
+
+## 테스트 범위
+- [ ] TC-UNIT-001: 함수 A 테스트
+- [ ] TC-UNIT-002: 함수 B 테스트
+
+## 테스트 케이스 상세
+### TC-UNIT-001: 함수 A 테스트
+**상태**: 🆕 신규
+**우선순위**: 높음
+
+**요구사항**:
+- 입력 X일 때 Y를 반환
+- 에러 조건 Z에서 예외 발생
+
+**테스트 케이스**:
+1. 정상 입력 → 예상 출력
+2. 잘못된 입력 → 예외 발생
+3. Edge case → 특정 동작
+
+**Mock**: 필요한 모듈/함수만 명시
+- `moduleA` 모킹
+- `functionB` stub
+
+**핵심 패턴** (선택, 1-2줄만):
+```typescript
+vi.mock("module", () => ({ fn: vi.fn() }))
+```
+```
+
 **PRD 변경 시**:
-- test-spec.md의 변경 이력 테이블 업데이트
+- test-spec 파일들의 변경 이력 테이블 업데이트
 - 영향받는 테스트 케이스에 상태 표시 (🔄 변경됨)
 - 변경/추가/삭제할 테스트를 명확히 명시
 
@@ -665,7 +784,8 @@ document/prd/{기능명}/
 **실시간 업데이트 필수**:
 - 각 구현 항목을 완료할 때마다 **즉시** PRD 파일의 체크리스트를 업데이트하세요
 - 완료된 항목: `- [ ]` → `- [x]`
-- 모든 구현 체크리스트가 완료(`- [x]`)되면 test-spec.md 작성
+- **모든 구현 체크리스트가 완료(`- [x]`)되면 반드시 test-spec-unit.md, test-spec-integration.md 작성**
+- 테스트 명세 작성 완료 후 Gemini에게 테스트 코드 작성 요청
 - 테스트 코드까지 완료되면 `document/index.md`의 상태를 ✅ 완료로 변경
 
 **예시**:

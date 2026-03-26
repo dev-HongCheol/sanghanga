@@ -8,7 +8,8 @@
 
 - **프레임워크**: Next.js 16 (App Router) + TypeScript 5.x
 - **아키텍처**: Feature-Sliced Design (FSD)
-- **스타일링**: Tailwind CSS + Shadcn UI
+- **UI 라이브러리**: Shadcn UI (필수) - `src/shared/ui` 경로
+- **스타일링**: Tailwind CSS (다크 테마 기본)
 - **폼 검증**: Zod + React Hook Form
 - **상태 관리**: Zustand (클라이언트) + TanStack Query (서버 상태)
 - **패키지 매니저**: pnpm (필수)
@@ -21,6 +22,7 @@
 - `document/architecture.md` - FSD 아키텍처
 - `document/coding-standards.md` - 코딩 규칙
 - `document/development.md` - 개발 패턴
+- `document/api/` - **키움 API 상세 명세** (Request/Response 스키마, 예제)
 - 해당 기능의 PRD (`document/prd/{기능명}/prd.md`)
 
 ### 2. PRD 기반 개발
@@ -29,20 +31,41 @@
 1. PRD 작성 (`document/prd/{기능명}/prd.md`)
 2. `document/index.md`에 등록 (상태: 📝 작성중)
 3. 구현하면서 **PRD 체크리스트 실시간 업데이트** (`- [ ]` → `- [x]`)
-4. 완료 시 `document/index.md` 상태 변경 (📝 → 🚧 → ✅)
+4. **구현 완료 후 반드시 테스트 명세 작성** (`test-spec-unit.md`, `test-spec-integration.md`)
+5. Gemini에게 테스트 코드 작성 요청
+6. 테스트 완료 시 `document/index.md` 상태 변경 (📝 → 🚧 → ✅)
 
-**PRD 없는 구현 금지**
+**필수 규칙**:
+- PRD 없는 구현 금지
+- **테스트 명세 없는 완료 금지** (test-spec-unit.md, test-spec-integration.md 필수)
+- **테스트 명세는 간결하게**: 요구사항 + 테스트 케이스 목록 + 핵심 패턴 1-2줄만
+  - ❌ 전체 코드 작성 금지 (토큰 낭비)
+  - ✅ "무엇을" 테스트할지만 명시, "어떻게"는 Gemini가 판단
 
 ### 3. FSD 아키텍처
 
 ```
-app → widgets → features → entities → shared
+app → pages → widgets → features → entities → shared
 ```
 
-**규칙**:
-- 상위 레이어는 하위 레이어만 import (역방향 금지)
-- 같은 레이어 내 슬라이스 간 import 금지
-- Public API만 export (`index.ts`)
+**핵심 규칙**:
+- **의존성 방향**: 상위 → 하위 레이어만 import (역방향 금지)
+- **슬라이스 격리**: 같은 레이어 내 슬라이스 간 import 금지
+- **Public API**: 모든 슬라이스는 `index.ts`를 통해 export
+
+**레이어 역할**:
+| 레이어 | 역할 | 주의사항 |
+|:-------|:-----|:---------|
+| `entities` | **비즈니스 도메인** (stock, account) | 도메인 API, 타입, 스키마 |
+| `shared` | **공통 인프라** (API 클라이언트, UI) | ⚠️ 도메인 로직 금지 |
+
+**❌ 안티패턴**:
+- `shared`에 도메인 로직 배치 (예: `shared/lib/kiwoom/api/stockRanking.api.ts`)
+- entities 대신 shared 사용
+
+**✅ 올바른 패턴**:
+- 도메인 로직 → `entities/stock/api/stockRanking.api.ts`
+- 공통 인프라 → `shared/lib/kiwoom/client.ts`
 
 ### 4. Server Component 우선
 
@@ -79,16 +102,42 @@ interface OrderRequest {
 }
 ```
 
+### UI 컴포넌트 (필수)
+
+**Shadcn UI를 기본으로 사용**:
+- 모든 UI 컴포넌트는 Shadcn UI 기반으로 구현
+- 컴포넌트 위치: `src/shared/ui/*.tsx`
+- 다크 테마 기본 적용 (별도 `dark:` 클래스 불필요)
+
+```typescript
+// ✅ 올바른 예시 - Shadcn UI 사용
+import { Card, CardHeader, CardTitle, CardContent } from "@/shared/ui/card";
+import { Button } from "@/shared/ui/button";
+import { Select, SelectTrigger, SelectValue } from "@/shared/ui/select";
+
+// ❌ 잘못된 예시 - 직접 HTML + Tailwind
+<div className="border rounded-lg p-4">
+  <button className="px-4 py-2 bg-blue-500">버튼</button>
+</div>
+```
+
+**신규 컴포넌트 설치**:
+```bash
+npx shadcn@latest add [component-name]
+# 예: npx shadcn@latest add dialog table form
+```
+
 ### 파일 네이밍
 
-| 종류          | 규칙                   | 예시                     |
-| :------------ | :--------------------- | :----------------------- |
-| 컴포넌트      | `PascalCase.tsx`       | `OrderWidget.tsx`        |
-| 폼 컴포넌트   | `PascalCaseForm.tsx`   | `OrderForm.tsx`          |
-| Route Handler | `route.ts`             | `app/api/order/route.ts` |
-| Server Action | `camelCase.action.ts`  | `placeOrder.action.ts`   |
-| API           | `camelCase.api.ts`     | `placeOrder.api.ts`      |
-| Query         | `camelCase.queries.ts` | `placeOrder.queries.ts`  |
+| 종류          | 규칙                   | 예시                          |
+| :------------ | :--------------------- | :---------------------------- |
+| 컴포넌트      | `PascalCase.tsx`       | `OrderWidget.tsx`             |
+| 폼 컴포넌트   | `PascalCaseForm.tsx`   | `OrderForm.tsx`               |
+| UI 컴포넌트   | `kebab-case.tsx`       | `src/shared/ui/button.tsx`    |
+| Route Handler | `route.ts`             | `app/api/order/route.ts`      |
+| Server Action | `camelCase.action.ts`  | `placeOrder.action.ts`        |
+| API           | `camelCase.api.ts`     | `placeOrder.api.ts`           |
+| Query         | `camelCase.queries.ts` | `placeOrder.queries.ts`       |
 | Schema        | `camelCase.schema.ts`  | `placeOrder.schema.ts`   |
 | Store         | `camelCase.store.ts`   | `account.store.ts`       |
 | Hook          | `useCamelCase.ts`      | `useKiwoomWebSocket.ts`  |
@@ -214,7 +263,7 @@ export async function POST(request: NextRequest) {
 
 - **과도한 추상화 방지** - YAGNI 원칙
 - **문서 동기화** - 코드 변경 시 PRD, index.md 업데이트
-- **키움 API Rate Limiting** - 1초당 최대 20회 (p-limit 사용)
+- **키움 API 에러 핸들링** - return_code 체크, 401 재시도
 - **SSE 재연결** - 자동 재연결 로직 필수
 - **IP 화이트리스트** - 키움 포털에 서버 IP 등록
 
@@ -249,6 +298,7 @@ export async function POST(request: NextRequest) {
 | **코딩 규칙**   | `document/coding-standards.md` |
 | **개발 가이드** | `document/development.md`      |
 | **API 가이드**  | `document/api-guide.md`        |
+| **API 상세 명세** | `document/api/README.md`     |
 | **문서 목록**   | `document/index.md`            |
 
 ## 외부 자료

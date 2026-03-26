@@ -1,5 +1,5 @@
-import react from "@vitejs/plugin-react";
 import path from "node:path";
+import react from "@vitejs/plugin-react";
 import { defineConfig } from "vitest/config";
 
 // defineConfig: Vitest의 설정을 정의하기 위한 도우미 함수입니다.
@@ -20,9 +20,12 @@ export default defineConfig({
 		},
 	},
 	resolve: {
-		// alias: 경로 별칭을 설정하여 '@/'를 'src/' 폴더로 연결합니다.
+		// alias: 경로 별칭을 설정합니다.
+		// '@/': FSD 레이어 (src/)
+		// 'app/': Next.js App Router (루트 app/)
 		alias: {
 			"@": path.resolve(__dirname, "./src"),
+			app: path.resolve(__dirname, "./app"),
 		},
 	},
 });

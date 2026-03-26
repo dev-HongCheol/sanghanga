@@ -32,14 +32,77 @@ cd trading-platform
 # 필수 라이브러리
 pnpm add zustand @tanstack/react-query zod
 
-# Shadcn UI
+# Shadcn UI 필수 패키지
 pnpm add class-variance-authority clsx tailwind-merge lucide-react
 
 # Supabase (선택)
 pnpm add @supabase/supabase-js
 ```
 
-### 3. 환경 변수 설정
+### 3. Shadcn UI 설정
+
+**Shadcn UI는 `src/shared/ui` 경로에 설치됩니다** (FSD 아키텍처 준수)
+
+#### 3.1. components.json 생성
+
+```json
+{
+  "$schema": "https://ui.shadcn.com/schema.json",
+  "style": "new-york",
+  "rsc": true,
+  "tsx": true,
+  "tailwind": {
+    "config": "tailwind.config.ts",
+    "css": "src/app/globals.css",
+    "baseColor": "slate",
+    "cssVariables": true,
+    "prefix": ""
+  },
+  "aliases": {
+    "components": "@/shared/ui",
+    "utils": "@/shared/lib/utils",
+    "ui": "@/shared/ui",
+    "lib": "@/shared/lib",
+    "hooks": "@/shared/hooks"
+  },
+  "iconLibrary": "lucide"
+}
+```
+
+#### 3.2. 컴포넌트 설치
+
+```bash
+# 필요한 컴포넌트 설치 (src/shared/ui에 자동 생성)
+npx shadcn@latest add card select alert button
+
+# 추가 컴포넌트 설치 예시
+npx shadcn@latest add dialog table form
+```
+
+**설치된 컴포넌트 위치**: `src/shared/ui/*.tsx`
+
+#### 3.3. 사용 예시
+
+```typescript
+// widgets/MyWidget.tsx
+import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card";
+import { Button } from "@/shared/ui/button";
+
+export function MyWidget() {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>제목</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <Button>버튼</Button>
+      </CardContent>
+    </Card>
+  );
+}
+```
+
+### 4. 환경 변수 설정
 
 ```bash
 # .env.local 파일 생성
@@ -60,7 +123,7 @@ NEXT_PUBLIC_SUPABASE_URL=https://xxx.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=xxx
 ```
 
-### 4. Next.js 설정
+### 5. Next.js 설정
 
 **next.config.ts**:
 ```typescript
@@ -74,7 +137,7 @@ const nextConfig: NextConfig = {
 export default nextConfig;
 ```
 
-### 5. 개발 서버 실행
+### 6. 개발 서버 실행
 
 ```bash
 pnpm dev

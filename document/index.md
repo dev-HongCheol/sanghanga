@@ -10,15 +10,18 @@
 | **코딩 규칙**     | 필수 준수 사항, 파일 네이밍, PRD 작성 규칙 | [coding-standards.md](./coding-standards.md) |
 | **테스트 표준**   | 테스트 프레임워크, 교육용 주석 규칙        | [testing-standards.md](./testing-standards.md) |
 | **API 사용법**    | 키움 REST API, OAuth 2.0, WebSocket        | [api-guide.md](./api-guide.md)               |
+| **API 상세 명세** | 키움 API 상세 스키마 및 예제 (자동 생성)   | [api/](./api/README.md)                      |
 
 ## 📋 PRD 목록
 
 > PRD(Product Requirements Document) 작성 시 이 목록에 추가하세요.
 
-| 기능명            | 상태      | 작성일       | 담당자 | 링크                               |
-| ----------------- | --------- | ------------ | ------ | ---------------------------------- |
-| 프로젝트 초기 설정 | ✅ 완료 | 2026-03-25 | - | [prd](./prd/project-setup/prd.md) |
-| _예시: 주문 위젯_ | _✅ 완료_ | _2024-01-15_ | _-_    | _[prd](./prd/order-widget/prd.md)_ |
+| 기능명                       | 상태    | 작성일     | 담당자 | 링크                                  |
+| ---------------------------- | ------- | ---------- | ------ | ------------------------------------- |
+| 프로젝트 초기 설정           | ✅ 완료 | 2026-03-25 | -      | [prd](./prd/project-setup/prd.md)     |
+| 키움 API 인증 및 토큰 관리   | 🚧 진행중 | 2026-03-25 | -      | [prd](./prd/kiwoom-auth/prd.md)       |
+| 실시간 종목조회순위 조회     | 🚧 진행중 | 2026-03-26 | -      | [prd](./prd/stock-ranking/prd.md)     |
+| _예시: 주문 위젯_            | _✅ 완료_ | _2024-01-15_ | _-_    | _[prd](./prd/order-widget/prd.md)_    |
 
 ### 상태 표시
 

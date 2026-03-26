@@ -17,23 +17,17 @@ graph TD
 
 ```
 stock-trading-platform/
-├── src/
-│   ├── app/                    # Next.js App Router
-│   │   ├── (auth)/            # 인증 그룹
-│   │   │   ├── login/
-│   │   │   └── layout.tsx
-│   │   ├── (trading)/         # 트레이딩 그룹
-│   │   │   ├── trade/
-│   │   │   ├── portfolio/
-│   │   │   └── layout.tsx
-│   │   ├── api/               # Route Handlers (Backend API)
-│   │   │   ├── auth/
-│   │   │   ├── order/
-│   │   │   ├── account/
-│   │   │   └── realtime/
-│   │   ├── layout.tsx         # 루트 레이아웃
-│   │   └── page.tsx           # 홈 페이지
-│   │
+├── app/                        # Next.js App Router (Routing)
+│   ├── (auth)/                # 인증 그룹
+│   ├── (trading)/             # 트레이딩 그룹
+│   ├── api/                   # Route Handlers (Backend API)
+│   ├── layout.tsx             # 루트 레이아웃 (Routing context)
+│   └── page.tsx               # 홈 페이지
+│
+├── src/                        # FSD 아키텍처 (Business Logic)
+│   ├── app/                    # FSD: app 레이어 (Global Config)
+│   │   ├── providers/         # 전역 Providers
+│   │   └── styles/            # 전역 스타일 (globals.css)
 │   ├── widgets/               # FSD: 위젯 레이어
 │   ├── features/              # FSD: 기능 레이어
 │   ├── entities/              # FSD: 엔티티 레이어
@@ -49,20 +43,26 @@ stock-trading-platform/
 Feature-Sliced Design으로 구조화:
 
 ```
-app → widgets → features → entities → shared
+app → pages → widgets → features → entities → shared
 ```
 
-| 레이어 | 설명 | 예시 |
-|:-------|:-----|:-----|
-| `app/` | Next.js App Router | 라우팅, 레이아웃 |
-| `widgets/` | 복합 위젯 | ChartWidget, OrderWidget |
-| `features/` | 기능 | placeOrder, fetchAccount |
-| `entities/` | 비즈니스 엔티티 | stock, account |
-| `shared/` | 공통 | ui, lib, api, types |
+| 레이어 | 설명 | 예시 | 필수/선택 |
+|:-------|:-----|:-----|:----------|
+| `app/` | FSD app 레이어 | 전역 설정, Providers, Styles | 필수 |
+| `pages/` | 화면/페이지 | StockRankingPage | 선택 |
+| `widgets/` | 자체완결 UI 블록 | StockRankingWidget | 선택 |
+| `features/` | 사용자 기능 | placeOrder, fetchAccount | 선택 |
+| `entities/` | **비즈니스 도메인 개념** | **stock, account, order** | **권장** |
+| `shared/` | 공통 인프라 | ui, kiwoom client, utils | 필수 |
 
-**규칙**: 상위 레이어는 하위 레이어만 import 가능
+**핵심 규칙**:
+1. ⬇️ **의존성 방향**: 상위 레이어는 하위 레이어만 import 가능 (Routing `app/`은 모든 레이어 참조 가능)
+2. 🚫 **같은 레이어 간 의존 금지**: `entities/stock` → `entities/account` 불가
+3. 📦 **Public API**: 모든 슬라이스는 `index.ts`를 통해 export
 
-**상세 폴더 구조**: [development.md - 디렉토리 구조](./development.md#디렉토리-구조)
+**⚠️ 중요**: `shared`는 **공통 인프라만**, 비즈니스 도메인 로직은 `entities`에 배치
+
+**상세 가이드**: [fsd-official.md](./fsd-official.md) | [development.md](./development.md#디렉토리-구조)
 
 ### Server Components vs Client Components
 
@@ -88,7 +88,7 @@ app → widgets → features → entities → shared
 Next.js App Router의 `app/api/*/route.ts`에서 백엔드 API 구현:
 
 ```
-src/app/api/
+app/api/
 ├── auth/route.ts          # POST /api/auth (로그인)
 ├── order/route.ts         # POST /api/order (주문)
 ├── account/route.ts       # GET /api/account (계좌 조회)
@@ -132,7 +132,7 @@ src/app/api/
 
 - OAuth 2.0 인증 (App Key/Secret)
 - Access Token 발급 및 캐싱
-- Rate Limiting (1초 20회)
+- 에러 핸들링 및 재시도 로직
 
 자세한 내용: [키움 REST API 사용법](./api-guide.md)
 
@@ -148,7 +148,7 @@ src/app/api/
 
 - 환경 변수로 민감 정보 관리 (.env)
 - Middleware로 API 보호
-- Rate Limiting (키움 API: 1초 20회)
+- IP 화이트리스트 (키움 포털 등록 필수)
 
 ## 성능 최적화
 
