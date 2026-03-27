@@ -85,7 +85,12 @@ src/                        # FSD 아키텍처 (Business Logic)
 │   └── index.ts
 │
 ├── features/              # 기능 계층
-│   ├── placeOrder/
+│   ├── placeOrder/        # 예시: 주문하기 기능
+│   │   ├── ui/            # UI 컴포넌트
+│   │   ├── model/         # 스키마, 타입, 상태
+│   │   ├── api/           # Server Actions, API 클라이언트
+│   │   ├── lib/           # 유틸리티
+│   │   └── index.ts       # Public API
 │   └── index.ts
 │
 ├── entities/              # 엔티티 계층
@@ -116,15 +121,15 @@ src/                        # FSD 아키텍처 (Business Logic)
    // features/placeOrder/index.ts
    export { PlaceOrderForm } from "./ui/PlaceOrderForm";
    export { usePlaceOrder } from "./api/placeOrder.queries";
-   export { placeOrderAction } from "./actions/placeOrder.action";
+   export { placeOrderAction } from "./api/placeOrder.action"; // Server Action
    ```
 
-3. **슬라이스 내부 구조**:
+3. **슬라이스 내부 구조** (FSD 표준 세그먼트):
    - `ui/`: React 컴포넌트
    - `model/`: 상태, 스키마, 타입
-   - `api/`: API 호출 함수 (Client-side)
-   - `actions/`: Server Actions (Server-side)
-   - `lib/`: 내부 유틸
+   - `api/`: 백엔드 통신 (Server Actions, API 클라이언트)
+   - `lib/`: 내부 유틸리티, 헬퍼 함수
+   - `config/`: 설정, 플래그
 
 ## Next.js 개발
 
@@ -138,10 +143,13 @@ src/                        # FSD 아키텍처 (Business Logic)
 
 - **Route Handlers**: `app/api/*/route.ts`에서 REST API 구현
 - **Server Actions**: `'use server'`로 서버 함수 정의, Form 처리
+  - **위치**: `features/{feature}/api/*.action.ts` (FSD 표준)
+  - **특징**: 타입 안전, 서버 측 실행, 클라이언트에서 함수처럼 호출
 
 **상세 규칙**:
 - [coding-standards.md - Route Handler](./coding-standards.md#route-handler)
 - [coding-standards.md - Server Actions](./coding-standards.md#server-actions)
+- [api-guide.md - 키움 API 호출 규칙](./api-guide.md#%EF%B8%8F-키움-api-호출-규칙-필수)
 
 ## API 개발
 
