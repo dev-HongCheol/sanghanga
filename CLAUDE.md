@@ -9,6 +9,7 @@
 
 - **프레임워크**: Next.js 16 (App Router) + TypeScript 5.x
 - **아키텍처**: Feature-Sliced Design (FSD)
+- **데이터베이스**: Supabase Self-Hosting (PostgreSQL) - https://supa.devhong.cc
 - **UI 라이브러리**: Shadcn UI (필수) - `src/shared/ui` 경로
 - **스타일링**: Tailwind CSS (다크 테마 기본)
 - **폼 검증**: Zod + React Hook Form
@@ -147,6 +148,57 @@ npx shadcn@latest add [component-name]
 
 **pnpm만 사용** (npm, yarn 금지)
 
+### 데이터베이스 (필수)
+
+**Supabase 셀프 호스팅 환경 규칙**:
+
+#### 1. Prefix 규칙 (필수)
+
+**⚠️ 모든 DB 객체에 `sh_` prefix 필수** (Sanghanga Project):
+- ✅ 테이블명: `sh_grid_strategies`, `sh_grid_orders`
+- ✅ 함수명: `sh_update_updated_at()`
+- ✅ 트리거명: `sh_set_updated_at`
+- ✅ ENUM 타입: `sh_order_type`, `sh_order_status`
+- ✅ 인덱스명: `idx_sh_grid_orders_strategy_id`
+- ❌ 컬럼명: prefix 불필요
+
+**이유**: Supabase 셀프 호스팅은 단일 DB에서 여러 프로젝트 공유
+
+#### 2. 스키마 파일 구성 (3종 세트)
+
+모든 기능의 DB 스키마는 **3개 파일로 구성**:
+
+| 파일 | 용도 | 실행 환경 |
+|:-----|:-----|:----------|
+| `01-schema.sql` | 전체 스키마 (새 환경용) | 신규 환경 |
+| `02-migration.sql` | 마이그레이션 (기존 프로젝트용) | 운영 환경 |
+| `03-reset.sql` | 리셋 (전체 삭제) | 개발/테스트만 |
+
+**위치**: `database/schemas/{기능명}/`
+
+**⚠️ 중요**: 스키마 변경 시 **3개 파일 모두 동기화 필수**
+
+#### 3. 한글 주석 필수
+
+Supabase UI에서 컬럼 정보 표시용:
+
+```sql
+COMMENT ON TABLE sh_grid_strategies IS '그리드 트레이딩 전략';
+COMMENT ON COLUMN sh_grid_strategies.stock_code IS '종목코드 (6자리)';
+```
+
+#### 4. 클라이언트 사용
+
+```typescript
+import { createClient } from '@/shared/lib/supabase/client';
+
+const supabase = createClient();
+// ⚠️ 테이블명에 sh_ prefix 필수
+const { data } = await supabase.from('sh_grid_strategies').select('*');
+```
+
+**상세 가이드**: [`database/README.md`](./database/README.md)
+
 ## Next.js 패턴
 
 ### Form 검증
@@ -215,6 +267,8 @@ npx shadcn@latest add [component-name]
 - [ ] Server Component 우선
 - [ ] Shadcn UI 사용
 - [ ] 키움 API는 서버에서만 호출
+- [ ] **DB 객체에 sh_ prefix 필수** (테이블, 함수, 트리거, ENUM, 인덱스)
+- [ ] **DB 스키마 변경 시 3종 파일 모두 업데이트** (schema, migration, reset)
 - [ ] **PRD 체크리스트 실시간 업데이트**
 
 ### 작업 후
@@ -234,12 +288,14 @@ npx shadcn@latest add [component-name]
 | **개발 가이드** | `document/development.md`      | Next.js 패턴, Form, Server Actions |
 | **API 가이드**  | `document/api-guide.md`        | 키움 API 호출 규칙, 패턴 |
 | **API 명세**    | `document/api/README.md`       | 키움 API 상세 명세 |
+| **DB 가이드**   | `database/README.md`           | **DB 스키마 규칙 (sh_ prefix, 3종 파일)** |
 | **문서 목록**   | `document/index.md`            | 전체 문서 인덱스 |
 
 ## 외부 자료
 
 - [Next.js](https://nextjs.org/docs) - App Router
 - [FSD](https://feature-sliced.design/) - 아키텍처
+- [Supabase](https://supabase.com/docs) - 데이터베이스
 - [Shadcn UI](https://ui.shadcn.com/) - UI 컴포넌트
 - [React Hook Form](https://react-hook-form.com/) - 폼 관리
 - [Zod](https://zod.dev/) - 스키마 검증

@@ -118,15 +118,36 @@ app/api/
 
 ## Database (Supabase)
 
+### 환경 정보
+
+- **타입**: Supabase Self-Hosting
+- **URL**: https://supa.devhong.cc
+- **DBMS**: PostgreSQL
+- **프로젝트 Prefix**: `sh_` (Sanghanga Project)
+
+**⚠️ 중요**: Supabase 셀프 호스팅은 단일 데이터베이스에서 여러 프로젝트를 관리하므로, **모든 테이블, 함수, 트리거, 인덱스, ENUM 타입에 `sh_` prefix 필수**
+
+### 스키마 관리
+
+모든 기능의 데이터베이스 스키마는 **3개의 SQL 파일**로 구성:
+
+| 파일 | 용도 | 실행 환경 |
+|:-----|:-----|:----------|
+| `01-schema.sql` | 전체 스키마 (새 환경용) | 신규 환경 |
+| `02-migration.sql` | 마이그레이션 (기존 프로젝트용) | 운영 환경 |
+| `03-reset.sql` | 리셋 (전체 삭제) | 개발/테스트만 |
+
+**위치**: `database/schemas/{기능명}/`
+
+**상세 가이드**: [database/README.md](../database/README.md)
+
 ### 주요 테이블
 
-| 테이블           | 설명             |
-| :--------------- | :--------------- |
-| `accounts`       | 거래 계좌        |
-| `orders`         | 주문 내역        |
-| `positions`      | 보유 포지션      |
-| `price_history`  | 가격 이력        |
-| `watchlist`      | 관심 종목        |
+| 테이블           | 설명             | Prefix 적용 |
+| :--------------- | :--------------- | :---------- |
+| `sh_grid_strategies` | 그리드 트레이딩 전략 | ✅ |
+| `sh_grid_orders` | 그리드 주문 | ✅ |
+| `sh_fill_events` | 체결 이벤트 | ✅ |
 
 ## 키움 REST API 연동
 
