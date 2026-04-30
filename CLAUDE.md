@@ -154,6 +154,8 @@ npx shadcn@latest add [component-name]
 - **라이브러리**: Zod + React Hook Form
 - **위치**: `model/*.schema.ts` (스키마), `ui/*Form.tsx` (폼 컴포넌트)
 - **검증**: zodResolver 사용
+- **⚠️ 중요**: Zod 스키마에서 `.default()` 사용 금지 (타입에 undefined 포함되어 resolver 에러 발생)
+  - 기본값은 `useForm`의 `defaultValues`에서만 설정
 
 **상세 가이드**: [`document/development.md - Form 검증`](./document/development.md#form-검증-zod--react-hook-form)
 

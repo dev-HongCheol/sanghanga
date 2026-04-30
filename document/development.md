@@ -163,6 +163,115 @@ src/                        # FSD 아키텍처 (Business Logic)
 - queryKey로 캐싱 관리
 - invalidateQueries로 재조회
 
+## Form 검증 (Zod & React Hook Form)
+
+### 기본 패턴
+
+**라이브러리**: Zod + React Hook Form
+
+**파일 구조**:
+- `model/*.schema.ts`: Zod 스키마 정의
+- `ui/*Form.tsx`: 폼 컴포넌트 (useForm + zodResolver)
+
+### ⚠️ 중요: `.default()` 사용 금지
+
+**문제**:
+```typescript
+// ❌ 잘못된 예시
+const schema = z.object({
+  market: z.string().default('ALL'),  // undefined 타입이 포함됨
+  minVolume: z.number().default(0)
+});
+
+type FormData = z.infer<typeof schema>;
+// market: string | undefined  ← react-hook-form resolver 에러 발생
+```
+
+**이유**:
+- Zod의 `.default()`는 값이 없어도 허용하기 때문에 타입에 `undefined`가 포함됨
+- react-hook-form은 이 타입을 그대로 사용해서 필드가 `undefined`일 수 있다고 판단
+- resolver에서 타입 불일치 에러 발생
+
+**해결**:
+```typescript
+// ✅ 올바른 예시
+const schema = z.object({
+  market: z.string(),           // .default() 제거
+  minVolume: z.number()
+});
+
+type FormData = z.infer<typeof schema>;
+// market: string  ← 타입이 명확함
+
+const form = useForm<FormData>({
+  resolver: zodResolver(schema),
+  defaultValues: {              // 기본값은 여기서만 설정
+    market: 'ALL',
+    minVolume: 0
+  }
+});
+```
+
+**규칙**:
+1. **Zod 스키마**: `.default()` 사용 금지, 타입 정의만
+2. **useForm**: `defaultValues`에서 모든 기본값 설정
+
+### 사용 예시
+
+**스키마 정의** (`model/searchStock.schema.ts`):
+```typescript
+import { z } from "zod";
+
+/**
+ * 종목 검색 폼 스키마
+ */
+export const searchStockSchema = z.object({
+  /** 검색어 */
+  keyword: z.string().min(1, "검색어를 입력하세요"),
+  /** 시장 구분 */
+  market: z.enum(["ALL", "KOSPI", "KOSDAQ"]),
+  /** 최소 거래량 */
+  minVolume: z.number().min(0)
+});
+
+export type SearchStockFormData = z.infer<typeof searchStockSchema>;
+```
+
+**폼 컴포넌트** (`ui/SearchStockForm.tsx`):
+```typescript
+"use client";
+
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { searchStockSchema, type SearchStockFormData } from "../model/searchStock.schema";
+import { Button } from "@/shared/ui/button";
+
+export function SearchStockForm() {
+  const form = useForm<SearchStockFormData>({
+    resolver: zodResolver(searchStockSchema),
+    defaultValues: {
+      keyword: "",
+      market: "ALL",
+      minVolume: 0
+    }
+  });
+
+  const onSubmit = (data: SearchStockFormData) => {
+    console.log(data);
+  };
+
+  return (
+    <form onSubmit={form.handleSubmit(onSubmit)}>
+      <input {...form.register("keyword")} />
+      {form.formState.errors.keyword && (
+        <p>{form.formState.errors.keyword.message}</p>
+      )}
+      <Button type="submit">검색</Button>
+    </form>
+  );
+}
+```
+
 ## 상태 관리
 
 ### Zustand

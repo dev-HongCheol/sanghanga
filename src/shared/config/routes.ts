@@ -1,4 +1,4 @@
-import { DollarSign, Sparkles, TrendingUp } from "lucide-react";
+import { DollarSign, Sparkles, Search } from "lucide-react";
 import type { Route } from "./routes.types";
 
 /**
@@ -14,18 +14,18 @@ export const MAIN_ROUTE = {
  */
 export const ROUTES: Route[] = [
 	{
-		label: "실시간 주도주",
-		href: "/stock-ranking",
-		icon: TrendingUp,
+		label: "종목 발굴",
+		href: "/stock-discovery",
+		icon: Search,
 		children: [
 			{
-				label: "거래대금 상위 기업",
-				href: "/stock-ranking/trading-value",
+				label: "거래대금 기반",
+				href: "/stock-discovery/trading-volume",
 				icon: DollarSign,
 			},
 			{
 				label: "테마 대장주",
-				href: "/stock-ranking/theme-leader",
+				href: "/stock-discovery/theme-leader",
 				icon: Sparkles,
 			},
 		],
