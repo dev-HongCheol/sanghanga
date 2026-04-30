@@ -85,7 +85,12 @@ src/                        # FSD 아키텍처 (Business Logic)
 │   └── index.ts
 │
 ├── features/              # 기능 계층
-│   ├── placeOrder/
+│   ├── placeOrder/        # 예시: 주문하기 기능
+│   │   ├── ui/            # UI 컴포넌트
+│   │   ├── model/         # 스키마, 타입, 상태
+│   │   ├── api/           # Server Actions, API 클라이언트
+│   │   ├── lib/           # 유틸리티
+│   │   └── index.ts       # Public API
 │   └── index.ts
 │
 ├── entities/              # 엔티티 계층
@@ -116,15 +121,15 @@ src/                        # FSD 아키텍처 (Business Logic)
    // features/placeOrder/index.ts
    export { PlaceOrderForm } from "./ui/PlaceOrderForm";
    export { usePlaceOrder } from "./api/placeOrder.queries";
-   export { placeOrderAction } from "./actions/placeOrder.action";
+   export { placeOrderAction } from "./api/placeOrder.action"; // Server Action
    ```
 
-3. **슬라이스 내부 구조**:
+3. **슬라이스 내부 구조** (FSD 표준 세그먼트):
    - `ui/`: React 컴포넌트
    - `model/`: 상태, 스키마, 타입
-   - `api/`: API 호출 함수 (Client-side)
-   - `actions/`: Server Actions (Server-side)
-   - `lib/`: 내부 유틸
+   - `api/`: 백엔드 통신 (Server Actions, API 클라이언트)
+   - `lib/`: 내부 유틸리티, 헬퍼 함수
+   - `config/`: 설정, 플래그
 
 ## Next.js 개발
 
@@ -138,10 +143,13 @@ src/                        # FSD 아키텍처 (Business Logic)
 
 - **Route Handlers**: `app/api/*/route.ts`에서 REST API 구현
 - **Server Actions**: `'use server'`로 서버 함수 정의, Form 처리
+  - **위치**: `features/{feature}/api/*.action.ts` (FSD 표준)
+  - **특징**: 타입 안전, 서버 측 실행, 클라이언트에서 함수처럼 호출
 
 **상세 규칙**:
 - [coding-standards.md - Route Handler](./coding-standards.md#route-handler)
 - [coding-standards.md - Server Actions](./coding-standards.md#server-actions)
+- [api-guide.md - 키움 API 호출 규칙](./api-guide.md#%EF%B8%8F-키움-api-호출-규칙-필수)
 
 ## API 개발
 
@@ -154,6 +162,115 @@ src/                        # FSD 아키텍처 (Business Logic)
 - `xxx.queries.ts`: useQuery/useMutation 훅
 - queryKey로 캐싱 관리
 - invalidateQueries로 재조회
+
+## Form 검증 (Zod & React Hook Form)
+
+### 기본 패턴
+
+**라이브러리**: Zod + React Hook Form
+
+**파일 구조**:
+- `model/*.schema.ts`: Zod 스키마 정의
+- `ui/*Form.tsx`: 폼 컴포넌트 (useForm + zodResolver)
+
+### ⚠️ 중요: `.default()` 사용 금지
+
+**문제**:
+```typescript
+// ❌ 잘못된 예시
+const schema = z.object({
+  market: z.string().default('ALL'),  // undefined 타입이 포함됨
+  minVolume: z.number().default(0)
+});
+
+type FormData = z.infer<typeof schema>;
+// market: string | undefined  ← react-hook-form resolver 에러 발생
+```
+
+**이유**:
+- Zod의 `.default()`는 값이 없어도 허용하기 때문에 타입에 `undefined`가 포함됨
+- react-hook-form은 이 타입을 그대로 사용해서 필드가 `undefined`일 수 있다고 판단
+- resolver에서 타입 불일치 에러 발생
+
+**해결**:
+```typescript
+// ✅ 올바른 예시
+const schema = z.object({
+  market: z.string(),           // .default() 제거
+  minVolume: z.number()
+});
+
+type FormData = z.infer<typeof schema>;
+// market: string  ← 타입이 명확함
+
+const form = useForm<FormData>({
+  resolver: zodResolver(schema),
+  defaultValues: {              // 기본값은 여기서만 설정
+    market: 'ALL',
+    minVolume: 0
+  }
+});
+```
+
+**규칙**:
+1. **Zod 스키마**: `.default()` 사용 금지, 타입 정의만
+2. **useForm**: `defaultValues`에서 모든 기본값 설정
+
+### 사용 예시
+
+**스키마 정의** (`model/searchStock.schema.ts`):
+```typescript
+import { z } from "zod";
+
+/**
+ * 종목 검색 폼 스키마
+ */
+export const searchStockSchema = z.object({
+  /** 검색어 */
+  keyword: z.string().min(1, "검색어를 입력하세요"),
+  /** 시장 구분 */
+  market: z.enum(["ALL", "KOSPI", "KOSDAQ"]),
+  /** 최소 거래량 */
+  minVolume: z.number().min(0)
+});
+
+export type SearchStockFormData = z.infer<typeof searchStockSchema>;
+```
+
+**폼 컴포넌트** (`ui/SearchStockForm.tsx`):
+```typescript
+"use client";
+
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { searchStockSchema, type SearchStockFormData } from "../model/searchStock.schema";
+import { Button } from "@/shared/ui/button";
+
+export function SearchStockForm() {
+  const form = useForm<SearchStockFormData>({
+    resolver: zodResolver(searchStockSchema),
+    defaultValues: {
+      keyword: "",
+      market: "ALL",
+      minVolume: 0
+    }
+  });
+
+  const onSubmit = (data: SearchStockFormData) => {
+    console.log(data);
+  };
+
+  return (
+    <form onSubmit={form.handleSubmit(onSubmit)}>
+      <input {...form.register("keyword")} />
+      {form.formState.errors.keyword && (
+        <p>{form.formState.errors.keyword.message}</p>
+      )}
+      <Button type="submit">검색</Button>
+    </form>
+  );
+}
+```
 
 ## 상태 관리
 

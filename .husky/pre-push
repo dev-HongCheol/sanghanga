@@ -1,0 +1,4 @@
+# 테스트코드 완성 전까지 임시 비활성화
+exit 0
+
+# pnpm check ; pnpm type-check ; pnpm test

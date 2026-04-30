@@ -19,9 +19,11 @@
 | 기능명                       | 상태    | 작성일     | 담당자 | 링크                                  |
 | ---------------------------- | ------- | ---------- | ------ | ------------------------------------- |
 | 프로젝트 초기 설정           | ✅ 완료 | 2026-03-25 | -      | [prd](./prd/project-setup/prd.md)     |
-| 키움 API 인증 및 토큰 관리   | 🚧 진행중 | 2026-03-25 | -      | [prd](./prd/kiwoom-auth/prd.md)       |
+| 키움 API 인증 및 토큰 관리   | ✅ 완료 | 2026-03-25 | -      | [prd](./prd/kiwoom-auth/prd.md)       |
 | 실시간 종목조회순위 조회     | 🚧 진행중 | 2026-03-26 | -      | [prd](./prd/stock-ranking/prd.md)     |
 | 전역 레이아웃 및 사이드바    | 🚧 진행중 | 2026-03-27 | -      | [prd](./prd/layout-sidebar/prd.md)    |
+| 거래대금 기반 종목 검색      | 📝 작성중 | 2026-03-27 | -      | [prd](./prd/trading-volume-screener/prd.md) |
+| HD현대 박스권 자동 매매       | 📝 작성중 | 2026-04-30 | -      | [prd](./prd/hd-hyundai-grid-trader/prd.md) |
 | _예시: 주문 위젯_            | _✅ 완료_ | _2024-01-15_ | _-_    | _[prd](./prd/order-widget/prd.md)_    |
 
 ### 상태 표시
