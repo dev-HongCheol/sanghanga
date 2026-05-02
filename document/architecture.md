@@ -149,6 +149,29 @@ app/api/
 | `sh_grid_orders` | 그리드 주문 | ✅ |
 | `sh_fill_events` | 체결 이벤트 | ✅ |
 
+### TypeScript 타입 접근 규칙
+
+`database.types.ts`는 `pnpm db:types`로 자동 생성되며 **직접 import 금지**.  
+반드시 **entities 레이어**를 통해서만 사용:
+
+```
+shared/lib/supabase/database.types.ts  ← 자동 생성 (직접 import 금지)
+         ↓ entities에서만 참조 허용
+entities/{도메인}/model/*.types.ts      ← Tables<>, Enums<>로 도메인 타입 wrapping
+         ↓
+features / widgets / pages             ← entities에서 import
+```
+
+```typescript
+// ✅ 올바른 사용
+import type { GridStrategy, OrderType } from "@/entities/grid-trader";
+
+// ❌ 금지
+import type { Tables } from "@/shared/lib/supabase/database.types";
+```
+
+스키마가 추가될 때마다 해당 domain의 entities 슬라이스에 타입 파일 생성.
+
 ## 키움 REST API 연동
 
 - OAuth 2.0 인증 (App Key/Secret)

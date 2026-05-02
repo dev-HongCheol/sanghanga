@@ -31,9 +31,9 @@
 ### 2. PRD 기반 개발
 
 **모든 기능은 PRD 작성부터 시작**:
-1. PRD 작성 (`document/prd/{기능명}/prd.md`)
+1. PRD 작성 (`document/prd/{기능명}/prd.md` + `checklist.md`)
 2. `document/index.md`에 등록 (상태: 📝 작성중)
-3. 구현하면서 **PRD 체크리스트 실시간 업데이트** (`- [ ]` → `- [x]`)
+3. 구현하면서 **체크리스트 실시간 업데이트** (`checklist.md`의 `- [ ]` → `- [x]`)
 4. **구현 완료 후 반드시 테스트 명세 작성** (`test-spec-unit.md`, `test-spec-integration.md`)
 5. 사용자가 Gemini에게 테스트 명세 전달
 6. 테스트 완료 시 `document/index.md` 상태 변경 (📝 → 🚧 → ✅)
@@ -43,6 +43,24 @@
 - **테스트 명세 없는 완료 금지**
 - **테스트 명세는 간결하게**: 요구사항 + 테스트 케이스 목록 + 핵심 패턴만
 - **기존 코드 변경 시**: 영향받는 기존 테스트 명세에 deprecated 표시
+
+#### PRD 파일 구조 규칙
+
+PRD는 **2개 파일**로 분리하여 작성 (토큰 효율 + 변경 빈도 분리):
+
+```
+document/prd/{기능명}/
+├── prd.md        # 요구사항 + 기술 결정사항 + UI (안정적, ~200줄 이내)
+└── checklist.md  # 구현 진행 상황만 (자주 업데이트)
+```
+
+**prd.md에 포함**: 개요/목적, 기능 요구사항(비즈니스 룰), 기술 스택 결정 이유, UI 와이어프레임, 주의사항
+
+**prd.md에서 제외** (이미 다른 곳에 있음):
+- API Request/Response 상세 → `document/api/` 참조
+- Zod 스키마 코드 → 실제 구현 파일에 있어야 함
+- DB 스키마 SQL → `database/schemas/` 참조
+- 구현 체크리스트 → `checklist.md`로 분리
 
 **상세 가이드**: [`document/development.md - 협업 워크플로우`](./document/development.md#협업-워크플로우-claude--gemini)
 
@@ -187,14 +205,51 @@ COMMENT ON TABLE sh_grid_strategies IS '그리드 트레이딩 전략';
 COMMENT ON COLUMN sh_grid_strategies.stock_code IS '종목코드 (6자리)';
 ```
 
-#### 4. 클라이언트 사용
+#### 4. 타입 접근 규칙 (필수)
+
+`database.types.ts`는 자동 생성 파일입니다. **직접 import 금지**, 반드시 entities 레이어를 통해서만 사용:
+
+```
+shared/lib/supabase/database.types.ts   ← 자동 생성 (직접 import 금지)
+         ↓ entities에서만 참조
+entities/{도메인}/model/*.types.ts       ← Tables<>, Enums<>로 도메인 타입 정의
+         ↓
+features / widgets / pages
+```
 
 ```typescript
-import { createClient } from '@/shared/lib/supabase/client';
+// ✅ 올바른 사용
+import type { GridStrategy } from "@/entities/grid-trader";
 
-const supabase = createClient();
+// ❌ 금지 — database.types.ts 직접 import
+import type { Database } from "@/shared/lib/supabase/database.types";
+import type { Tables } from "@/shared/lib/supabase/database.types";
+```
+
+entity 타입 파일 작성 방법:
+```typescript
+// entities/{도메인}/model/{도메인}.types.ts
+import type { Tables, Enums } from "@/shared/lib/supabase/database.types";
+
+export type GridStrategy = Tables<"sh_grid_strategies">;
+export type OrderType = Enums<"sh_order_type">;
+```
+
+#### 5. 클라이언트 사용
+
+```typescript
+import { createServerClient } from '@/shared/lib/supabase/server';
+
+const supabase = await createServerClient();
 // ⚠️ 테이블명에 sh_ prefix 필수
 const { data } = await supabase.from('sh_grid_strategies').select('*');
+```
+
+#### 6. 타입 재생성
+
+스키마 변경 시:
+```bash
+pnpm db:types   # SaaS Supabase에서 타입 재생성 → database.types.ts 덮어쓰기
 ```
 
 **상세 가이드**: [`database/README.md`](./database/README.md)

@@ -10,11 +10,19 @@
 -- ============================================================================
 
 -- 주문 유형 (매수/매도)
-CREATE TYPE IF NOT EXISTS sh_order_type AS ENUM ('BUY', 'SELL');
+DO $$ BEGIN
+  CREATE TYPE sh_order_type AS ENUM ('BUY', 'SELL');
+EXCEPTION
+  WHEN duplicate_object THEN null;
+END $$;
 COMMENT ON TYPE sh_order_type IS '주문 유형 (BUY: 매수, SELL: 매도)';
 
 -- 주문 상태 (대기/체결/취소)
-CREATE TYPE IF NOT EXISTS sh_order_status AS ENUM ('PENDING', 'FILLED', 'CANCELLED');
+DO $$ BEGIN
+  CREATE TYPE sh_order_status AS ENUM ('PENDING', 'FILLED', 'CANCELLED');
+EXCEPTION
+  WHEN duplicate_object THEN null;
+END $$;
 COMMENT ON TYPE sh_order_status IS '주문 상태 (PENDING: 대기, FILLED: 체결, CANCELLED: 취소)';
 
 -- 테이블 생성
