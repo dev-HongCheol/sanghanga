@@ -15,20 +15,21 @@
 
 ### entities/grid-trader
 - [x] 타입 정의 (`model/gridTrader.types.ts`)
-- [ ] Zod 스키마 (`model/gridTrader.schema.ts`)
-- [ ] DB API 함수 (`api/gridStrategy.api.ts`)
+- [x] Zod 스키마 (`model/gridTrader.schema.ts`)
+- [x] DB API 함수 (`api/gridStrategy.api.ts`)
 
 ### Server Actions (features/grid-trader/api/)
-- [ ] `createStrategy.action.ts`
-- [ ] `updateStrategy.action.ts`
-- [ ] `deleteStrategy.action.ts`
-- [ ] `toggleStrategy.action.ts`
-- [ ] `searchStock.action.ts` (ka10001)
-- [ ] `getCurrentPrice.action.ts` (ka10001)
-- [ ] `placeOrder.action.ts` (ka30001)
-- [ ] `cancelOrder.action.ts` (ka30003)
-- [ ] `getOrders.action.ts` (ka10075/ka10076)
-- [ ] `getAccountBalance.action.ts` (ka30007)
+- [x] `createStrategy.action.ts`
+- [x] `updateStrategy.action.ts`
+- [x] `deleteStrategy.action.ts`
+- [x] `toggleStrategy.action.ts`
+- [x] `searchStock.action.ts` (ka10099)
+- [x] `getCurrentPrice.action.ts` (ka10001)
+- [x] `placeOrder.action.ts` (kt10000/kt10001)
+- [x] `modifyOrder.action.ts` (kt10002)
+- [x] `cancelOrder.action.ts` (kt10003)
+- [x] `getOrders.action.ts` (ka10075/ka10076)
+- [x] `getAccountBalance.action.ts` (kt00018)
 
 ### 그리드 엔진 (features/grid-trader/lib/)
 - [ ] `calculateGrid.ts` — 그리드 가격 배열 계산
