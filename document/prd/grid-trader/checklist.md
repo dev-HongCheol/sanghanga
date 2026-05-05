@@ -47,13 +47,13 @@
 - [ ] 매시간 리밸런싱 체크
 
 ### UI (features/grid-trader/ui/)
-- [ ] `StrategyList.tsx`
-- [ ] `StrategyCard.tsx`
-- [ ] `GridStrategyForm.tsx`
-- [ ] `StockSearchInput.tsx`
-- [ ] `AccountBalance.tsx`
-- [ ] `ActiveOrdersTable.tsx`
-- [ ] `FillHistoryTable.tsx`
+- [x] `StrategyList.tsx`
+- [x] `StrategyCard.tsx`
+- [x] `GridStrategyForm.tsx`
+- [x] `StockSearchInput.tsx`
+- [x] `AccountBalance.tsx`
+- [x] `ActiveOrdersTable.tsx`
+- [x] `FillHistoryTable.tsx`
 
 ### Pages
 - [ ] `app/trading-system/grid-trader/page.tsx`
