@@ -32,11 +32,11 @@
 - [x] `getAccountBalance.action.ts` (kt00018)
 
 ### 그리드 엔진 (features/grid-trader/lib/)
-- [ ] `calculateGrid.ts` — 그리드 가격 배열 계산
-- [ ] `deployGrid.ts` — 초기 그리드 배치
-- [ ] `handleFillEvent.ts` — 체결 이벤트 처리
-- [ ] `rebalanceGrid.ts` — 리밸런싱 로직
-- [ ] `pollFills.ts` — 체결 감지 Polling
+- [x] `calculateGrid.ts` — 그리드 가격 배열 계산
+- [x] `deployGrid.ts` — 초기 그리드 배치
+- [x] `handleFillEvent.ts` — 체결 이벤트 처리
+- [x] `rebalanceGrid.ts` — 리밸런싱 로직
+- [x] `pollFills.ts` — 체결 감지 Polling
 
 ### Cron Jobs
 - [ ] 08:00 토큰 갱신
