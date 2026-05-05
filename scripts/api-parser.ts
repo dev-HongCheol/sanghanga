@@ -40,7 +40,7 @@ async function parseExcel() {
 	for (const row of indexData) {
 		const apiId = clean(row.__EMPTY); // Column B: API ID
 		// 'au10001' 또는 'ka'로 시작하는 ID만 필터링
-		if (apiId && (apiId.startsWith("au") || apiId.startsWith("ka"))) {
+		if (apiId && (apiId.startsWith("au") || apiId.startsWith("ka") || apiId.startsWith("kt"))) {
 			apiList.push({
 				apiId: apiId,
 				apiName: clean(row.__EMPTY_1), // Column C: API 명
