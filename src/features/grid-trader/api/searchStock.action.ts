@@ -57,11 +57,8 @@ interface StockListResponse {
  */
 export async function searchStockAction(
 	keyword: string,
-	market: "0" | "10" | "ALL" = "ALL",
-): Promise<
-	| { success: true; stocks: StockInfo[] }
-	| { success: false; error: string }
-> {
+	market: "0" | "10" | "ALL" = "ALL"
+): Promise<{ success: true; stocks: StockInfo[] } | { success: false; error: string }> {
 	try {
 		logger.info("SearchStockAction", "종목 검색 시작", {
 			keyword,
@@ -81,7 +78,7 @@ export async function searchStockAction(
 				method: "POST",
 				headers: { "api-id": "ka10099" },
 				body: JSON.stringify({ mrkt_tp }),
-			}),
+			})
 		);
 
 		const responses = await Promise.all(promises);
@@ -95,7 +92,7 @@ export async function searchStockAction(
 					.filter(
 						(stock) =>
 							stock.name.toUpperCase().includes(normalizedKeyword) ||
-							stock.code.includes(normalizedKeyword),
+							stock.code.includes(normalizedKeyword)
 					)
 					.map((stock) => ({
 						code: stock.code,
@@ -110,7 +107,7 @@ export async function searchStockAction(
 
 		// 중복 제거 (종목코드 기준)
 		const uniqueStocks = Array.from(
-			new Map(allStocks.map((stock) => [stock.code, stock])).values(),
+			new Map(allStocks.map((stock) => [stock.code, stock])).values()
 		);
 
 		// 최대 20개로 제한

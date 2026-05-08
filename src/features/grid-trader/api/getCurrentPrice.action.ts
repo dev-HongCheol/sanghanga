@@ -79,15 +79,10 @@ export interface CurrentPrice {
  * @returns 현재가 정보
  */
 export async function getCurrentPriceAction(
-	stockCode: string,
-): Promise<
-	| { success: true; priceInfo: CurrentPrice }
-	| { success: false; error: string }
-> {
+	stockCode: string
+): Promise<{ success: true; priceInfo: CurrentPrice } | { success: false; error: string }> {
 	try {
-		logger.info("GetCurrentPriceAction", "현재가 조회 시작", {
-			stockCode,
-		});
+		logger.info("GetCurrentPriceAction", "현재가 조회 시작", { stockCode }, true);
 
 		// 종목코드 검증
 		if (!stockCode || stockCode.length !== 6) {
@@ -95,35 +90,37 @@ export async function getCurrentPriceAction(
 		}
 
 		// 키움 API 호출
-		const response = await kiwoomClient.request<StockBasicInfoResponse>(
-			"/api/dostk/stkinfo",
-			{
-				method: "POST",
-				headers: { "api-id": "ka10001" },
-				body: JSON.stringify({ stk_cd: stockCode }),
-			},
-		);
+		const response = await kiwoomClient.request<StockBasicInfoResponse>("/api/dostk/stkinfo", {
+			method: "POST",
+			headers: { "api-id": "ka10001" },
+			body: JSON.stringify({ stk_cd: stockCode }),
+		});
 
 		// 응답 데이터 파싱
 		const priceInfo: CurrentPrice = {
 			stockCode: response.stk_cd,
 			stockName: response.stk_nm,
-			currentPrice: parseFloat(response.cur_prc) || 0,
-			change: parseFloat(response.pred_pre) || 0,
-			changeRate: parseFloat(response.flu_rt) || 0,
-			highPrice: parseFloat(response.high_pric) || 0,
-			lowPrice: parseFloat(response.low_pric) || 0,
-			openPrice: parseFloat(response.open_pric) || 0,
-			volume: parseFloat(response.trde_qty) || 0,
-			basePrice: parseFloat(response.base_pric) || 0,
-			marketCap: parseFloat(response.mac) || 0,
+			currentPrice: Number.parseFloat(response.cur_prc) || 0,
+			change: Number.parseFloat(response.pred_pre) || 0,
+			changeRate: Number.parseFloat(response.flu_rt) || 0,
+			highPrice: Number.parseFloat(response.high_pric) || 0,
+			lowPrice: Number.parseFloat(response.low_pric) || 0,
+			openPrice: Number.parseFloat(response.open_pric) || 0,
+			volume: Number.parseFloat(response.trde_qty) || 0,
+			basePrice: Number.parseFloat(response.base_pric) || 0,
+			marketCap: Number.parseFloat(response.mac) || 0,
 		};
 
-		logger.info("GetCurrentPriceAction", "현재가 조회 완료", {
-			stockCode,
-			stockName: priceInfo.stockName,
-			currentPrice: priceInfo.currentPrice,
-		});
+		logger.info(
+			"GetCurrentPriceAction",
+			"현재가 조회 완료",
+			{
+				stockCode,
+				stockName: priceInfo.stockName,
+				currentPrice: priceInfo.currentPrice,
+			},
+			true
+		);
 
 		return { success: true, priceInfo };
 	} catch (error) {

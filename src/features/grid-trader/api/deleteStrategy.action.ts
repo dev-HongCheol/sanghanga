@@ -1,7 +1,7 @@
 "use server";
 
-import { logger } from "@/shared/lib/logger";
 import { deleteStrategy as deleteStrategyDb } from "@/entities/grid-trader";
+import { logger } from "@/shared/lib/logger";
 
 /**
  * Server Action: 그리드 전략 삭제
@@ -9,7 +9,7 @@ import { deleteStrategy as deleteStrategyDb } from "@/entities/grid-trader";
  * @returns 삭제 결과
  */
 export async function deleteStrategyAction(
-	id: string,
+	id: string
 ): Promise<{ success: true } | { success: false; error: string }> {
 	try {
 		logger.info("DeleteStrategyAction", "전략 삭제 시작", {

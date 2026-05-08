@@ -1,12 +1,12 @@
 "use server";
 
-import { logger } from "@/shared/lib/logger";
 import {
-	createStrategy as createStrategyDb,
-	type GridStrategyInsert,
 	type GridStrategy,
+	type GridStrategyInsert,
+	createStrategy as createStrategyDb,
 } from "@/entities/grid-trader";
 import { gridStrategyCreateSchema } from "@/entities/grid-trader";
+import { logger } from "@/shared/lib/logger";
 
 /**
  * Server Action: 그리드 전략 생성
@@ -14,11 +14,8 @@ import { gridStrategyCreateSchema } from "@/entities/grid-trader";
  * @returns 생성 결과
  */
 export async function createStrategyAction(
-	data: GridStrategyInsert,
-): Promise<
-	| { success: true; strategy: GridStrategy }
-	| { success: false; error: string }
-> {
+	data: GridStrategyInsert
+): Promise<{ success: true; strategy: GridStrategy } | { success: false; error: string }> {
 	try {
 		logger.info("CreateStrategyAction", "전략 생성 시작", {
 			stockCode: data.stock_code,

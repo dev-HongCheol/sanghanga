@@ -1,12 +1,13 @@
 "use server";
 
-import { logger } from "@/shared/lib/logger";
 import {
-	updateStrategy as updateStrategyDb,
-	type GridStrategyUpdate,
 	type GridStrategy,
+	type GridStrategyUpdate,
+	updateStrategy as updateStrategyDb,
 } from "@/entities/grid-trader";
 import { gridStrategyUpdateSchema } from "@/entities/grid-trader";
+import { logger } from "@/shared/lib/logger";
+import { rebalanceGrid } from "../lib/rebalanceGrid";
 
 /**
  * Server Action: 그리드 전략 수정
@@ -16,11 +17,8 @@ import { gridStrategyUpdateSchema } from "@/entities/grid-trader";
  */
 export async function updateStrategyAction(
 	id: string,
-	data: GridStrategyUpdate,
-): Promise<
-	| { success: true; strategy: GridStrategy }
-	| { success: false; error: string }
-> {
+	data: GridStrategyUpdate
+): Promise<{ success: true; strategy: GridStrategy } | { success: false; error: string }> {
 	try {
 		logger.info("UpdateStrategyAction", "전략 수정 시작", {
 			strategyId: id,
@@ -40,6 +38,22 @@ export async function updateStrategyAction(
 
 		// DB 업데이트
 		const strategy = await updateStrategyDb(id, data);
+
+		// 활성 상태인 전략이면 리밸런싱 (기존 주문 취소 + 신규 그리드 배치)
+		if (strategy.is_active) {
+			logger.info("UpdateStrategyAction", "활성 전략 수정 → 리밸런싱 시작", {
+				strategyId: strategy.id,
+			});
+
+			const rebalanceResult = await rebalanceGrid(strategy);
+
+			logger.info("UpdateStrategyAction", "리밸런싱 완료", {
+				strategyId: strategy.id,
+				cancelled: rebalanceResult.cancelled,
+				placed: rebalanceResult.placed,
+				failed: rebalanceResult.failed,
+			});
+		}
 
 		logger.info("UpdateStrategyAction", "전략 수정 완료", {
 			strategyId: strategy.id,

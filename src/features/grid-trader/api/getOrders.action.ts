@@ -136,30 +136,24 @@ interface FilledOrdersResponse {
  * @returns 미체결 주문 목록
  */
 export async function getPendingOrdersAction(
-	stockCode?: string,
-): Promise<
-	| { success: true; orders: PendingOrder[] }
-	| { success: false; error: string }
-> {
+	stockCode?: string
+): Promise<{ success: true; orders: PendingOrder[] } | { success: false; error: string }> {
 	try {
 		logger.info("GetPendingOrdersAction", "미체결 주문 조회 시작", {
 			stockCode: stockCode || "전체",
 		});
 
 		// 키움 API 호출 (ka10075)
-		const response = await kiwoomClient.request<PendingOrdersResponse>(
-			"/api/dostk/acnt",
-			{
-				method: "POST",
-				headers: { "api-id": "ka10075" },
-				body: JSON.stringify({
-					all_stk_tp: stockCode ? "1" : "0", // 0:전체, 1:종목
-					trde_tp: "0", // 0:전체, 1:매도, 2:매수
-					stk_cd: stockCode || "",
-					stex_tp: "0", // 0:통합
-				}),
-			},
-		);
+		const response = await kiwoomClient.request<PendingOrdersResponse>("/api/dostk/acnt", {
+			method: "POST",
+			headers: { "api-id": "ka10075" },
+			body: JSON.stringify({
+				all_stk_tp: stockCode ? "1" : "0", // 0:전체, 1:종목
+				trde_tp: "0", // 0:전체, 1:매도, 2:매수
+				stk_cd: stockCode || "",
+				stex_tp: "0", // 0:통합
+			}),
+		});
 
 		// 응답 데이터 파싱
 		const orders: PendingOrder[] = (response.oso || []).map((order) => ({
@@ -167,9 +161,9 @@ export async function getPendingOrdersAction(
 			stockCode: order.stk_cd,
 			stockName: order.stk_nm,
 			orderType: order.io_tp_nm,
-			orderPrice: parseFloat(order.ord_pric) || 0,
-			orderQty: parseFloat(order.ord_qty) || 0,
-			pendingQty: parseFloat(order.oso_qty) || 0,
+			orderPrice: Number.parseFloat(order.ord_pric) || 0,
+			orderQty: Number.parseFloat(order.ord_qty) || 0,
+			pendingQty: Number.parseFloat(order.oso_qty) || 0,
 			orderStatus: order.ord_stt,
 			orderTime: order.tm,
 		}));
@@ -188,8 +182,7 @@ export async function getPendingOrdersAction(
 
 		return {
 			success: false,
-			error:
-				error instanceof Error ? error.message : "미체결 주문 조회 중 오류가 발생했습니다.",
+			error: error instanceof Error ? error.message : "미체결 주문 조회 중 오류가 발생했습니다.",
 		};
 	}
 }
@@ -200,31 +193,25 @@ export async function getPendingOrdersAction(
  * @returns 체결 주문 목록
  */
 export async function getFilledOrdersAction(
-	stockCode?: string,
-): Promise<
-	| { success: true; orders: FilledOrder[] }
-	| { success: false; error: string }
-> {
+	stockCode?: string
+): Promise<{ success: true; orders: FilledOrder[] } | { success: false; error: string }> {
 	try {
 		logger.info("GetFilledOrdersAction", "체결 주문 조회 시작", {
 			stockCode: stockCode || "전체",
 		});
 
 		// 키움 API 호출 (ka10076)
-		const response = await kiwoomClient.request<FilledOrdersResponse>(
-			"/api/dostk/acnt",
-			{
-				method: "POST",
-				headers: { "api-id": "ka10076" },
-				body: JSON.stringify({
-					stk_cd: stockCode || "",
-					qry_tp: stockCode ? "1" : "0", // 0:전체, 1:종목
-					sell_tp: "0", // 0:전체, 1:매도, 2:매수
-					ord_no: "",
-					stex_tp: "0", // 0:통합
-				}),
-			},
-		);
+		const response = await kiwoomClient.request<FilledOrdersResponse>("/api/dostk/acnt", {
+			method: "POST",
+			headers: { "api-id": "ka10076" },
+			body: JSON.stringify({
+				stk_cd: stockCode || "",
+				qry_tp: stockCode ? "1" : "0", // 0:전체, 1:종목
+				sell_tp: "0", // 0:전체, 1:매도, 2:매수
+				ord_no: "",
+				stex_tp: "0", // 0:통합
+			}),
+		});
 
 		// 응답 데이터 파싱
 		const orders: FilledOrder[] = (response.cntr || []).map((order) => ({
@@ -232,10 +219,10 @@ export async function getFilledOrdersAction(
 			stockCode: order.stk_cd,
 			stockName: order.stk_nm,
 			orderType: order.io_tp_nm,
-			orderPrice: parseFloat(order.ord_pric) || 0,
-			orderQty: parseFloat(order.ord_qty) || 0,
-			filledPrice: parseFloat(order.cntr_pric) || 0,
-			filledQty: parseFloat(order.cntr_qty) || 0,
+			orderPrice: Number.parseFloat(order.ord_pric) || 0,
+			orderQty: Number.parseFloat(order.ord_qty) || 0,
+			filledPrice: Number.parseFloat(order.cntr_pric) || 0,
+			filledQty: Number.parseFloat(order.cntr_qty) || 0,
 			orderStatus: order.ord_stt,
 			orderTime: order.ord_tm,
 		}));
@@ -254,8 +241,7 @@ export async function getFilledOrdersAction(
 
 		return {
 			success: false,
-			error:
-				error instanceof Error ? error.message : "체결 주문 조회 중 오류가 발생했습니다.",
+			error: error instanceof Error ? error.message : "체결 주문 조회 중 오류가 발생했습니다.",
 		};
 	}
 }

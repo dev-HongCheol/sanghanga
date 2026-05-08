@@ -1,10 +1,11 @@
 "use server";
 
-import { logger } from "@/shared/lib/logger";
 import {
-	toggleStrategyActive as toggleStrategyActiveDb,
 	type GridStrategy,
+	toggleStrategyActive as toggleStrategyActiveDb,
 } from "@/entities/grid-trader";
+import { logger } from "@/shared/lib/logger";
+import { deployGrid } from "../lib/deployGrid";
 
 /**
  * Server Action: 그리드 전략 활성화/비활성화 토글
@@ -14,11 +15,8 @@ import {
  */
 export async function toggleStrategyAction(
 	id: string,
-	isActive: boolean,
-): Promise<
-	| { success: true; strategy: GridStrategy }
-	| { success: false; error: string }
-> {
+	isActive: boolean
+): Promise<{ success: true; strategy: GridStrategy } | { success: false; error: string }> {
 	try {
 		logger.info("ToggleStrategyAction", "전략 활성화 상태 변경 시작", {
 			strategyId: id,
@@ -27,6 +25,21 @@ export async function toggleStrategyAction(
 
 		// DB 업데이트
 		const strategy = await toggleStrategyActiveDb(id, isActive);
+
+		// 활성화 시 초기 그리드 배치
+		if (isActive) {
+			logger.info("ToggleStrategyAction", "활성화 → 그리드 배치 시작", {
+				strategyId: strategy.id,
+			});
+
+			const deployResult = await deployGrid(strategy);
+
+			logger.info("ToggleStrategyAction", "그리드 배치 완료", {
+				strategyId: strategy.id,
+				placed: deployResult.placed,
+				failed: deployResult.failed,
+			});
+		}
 
 		logger.info("ToggleStrategyAction", "전략 활성화 상태 변경 완료", {
 			strategyId: strategy.id,
@@ -44,9 +57,7 @@ export async function toggleStrategyAction(
 		return {
 			success: false,
 			error:
-				error instanceof Error
-					? error.message
-					: "전략 활성화 상태 변경 중 오류가 발생했습니다.",
+				error instanceof Error ? error.message : "전략 활성화 상태 변경 중 오류가 발생했습니다.",
 		};
 	}
 }

@@ -122,7 +122,7 @@ export async function getAccountBalanceAction(
 	exchange: "KRX" | "NXT" = "KRX"
 ): Promise<{ success: true; balance: AccountBalance } | { success: false; error: string }> {
 	try {
-		logger.info("GetAccountBalanceAction", "계좌 잔고 조회 시작");
+		logger.info("GetAccountBalanceAction", "계좌 잔고 조회 시작", undefined, true);
 
 		const response = await kiwoomClient.request<AccountBalanceResponse>("/api/dostk/acnt", {
 			method: "POST",
@@ -133,30 +133,37 @@ export async function getAccountBalanceAction(
 			}),
 		});
 
+		const holdings = (response.acnt_evlt_remn_indv_tot || []).map((item) => ({
+			stockCode: item.stk_cd,
+			stockName: item.stk_nm,
+			quantity: Number.parseFloat(item.rmnd_qty) || 0,
+			tradableQuantity: Number.parseFloat(item.trde_able_qty) || 0,
+			purchasePrice: Number.parseFloat(item.pur_pric) || 0,
+			currentPrice: Number.parseFloat(item.cur_prc) || 0,
+			purchaseAmount: Number.parseFloat(item.pur_amt) || 0,
+			evaluationAmount: Number.parseFloat(item.evlt_amt) || 0,
+			profitLoss: Number.parseFloat(item.evltv_prft) || 0,
+			returnRate: Number.parseFloat(item.prft_rt) || 0,
+		}));
+
 		const balance: AccountBalance = {
 			totalPurchaseAmount: Number.parseFloat(response.tot_pur_amt) || 0,
 			totalEvaluationAmount: Number.parseFloat(response.tot_evlt_amt) || 0,
 			totalProfitLoss: Number.parseFloat(response.tot_evlt_pl) || 0,
 			totalReturnRate: Number.parseFloat(response.tot_prft_rt) || 0,
 			estimatedDepositAsset: Number.parseFloat(response.prsm_dpst_aset_amt) || 0,
-			holdings: (response.acnt_evlt_remn_indv_tot || []).map((item) => ({
-				stockCode: item.stk_cd,
-				stockName: item.stk_nm,
-				quantity: Number.parseFloat(item.rmnd_qty) || 0,
-				tradableQuantity: Number.parseFloat(item.trde_able_qty) || 0,
-				purchasePrice: Number.parseFloat(item.pur_pric) || 0,
-				currentPrice: Number.parseFloat(item.cur_prc) || 0,
-				purchaseAmount: Number.parseFloat(item.pur_amt) || 0,
-				evaluationAmount: Number.parseFloat(item.evlt_amt) || 0,
-				profitLoss: Number.parseFloat(item.evltv_prft) || 0,
-				returnRate: Number.parseFloat(item.prft_rt) || 0,
-			})),
+			holdings,
 		};
 
-		logger.info("GetAccountBalanceAction", "계좌 잔고 조회 완료", {
-			totalEvaluationAmount: balance.totalEvaluationAmount,
-			holdingsCount: balance.holdings.length,
-		});
+		logger.info(
+			"GetAccountBalanceAction",
+			"계좌 잔고 조회 완료",
+			{
+				totalEvaluationAmount: balance.totalEvaluationAmount,
+				holdingsCount: balance.holdings.length,
+			},
+			true
+		);
 
 		return { success: true, balance };
 	} catch (error) {
