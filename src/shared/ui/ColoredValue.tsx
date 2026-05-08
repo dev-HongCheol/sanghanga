@@ -6,8 +6,8 @@
 
 "use client";
 
-import { usePriceColorScheme, type PriceColorScheme } from "../model/priceColorScheme.store";
 import { cn } from "../lib/utils";
+import { type PriceColorScheme, usePriceColorScheme } from "../model/priceColorScheme.store";
 
 /**
  * ColoredValue 컴포넌트 Props
@@ -71,5 +71,7 @@ export function ColoredValue({
 	const displayValue = Math.abs(value);
 	const sign = showSign ? (isPositive ? "+" : isNegative ? "-" : "") : "";
 
-	return <span className={cn(colorClass, className)}>{`${sign}${displayValue.toLocaleString()}`}</span>;
+	return (
+		<span className={cn(colorClass, className)}>{`${sign}${displayValue.toLocaleString()}`}</span>
+	);
 }
