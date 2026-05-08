@@ -40,6 +40,6 @@ export const usePriceColorScheme = create<PriceColorSchemeStore>()(
 		}),
 		{
 			name: "price-color-scheme", // localStorage 키
-		},
-	),
+		}
+	)
 );

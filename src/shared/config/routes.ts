@@ -1,4 +1,4 @@
-import { DollarSign, Sparkles, Search } from "lucide-react";
+import { DollarSign, Grid3X3, Search, Sparkles, TrendingUp } from "lucide-react";
 import type { Route } from "./routes.types";
 
 /**
@@ -27,6 +27,18 @@ export const ROUTES: Route[] = [
 				label: "테마 대장주",
 				href: "/stock-discovery/theme-leader",
 				icon: Sparkles,
+			},
+		],
+	},
+	{
+		label: "트레이딩 시스템",
+		href: "/trading-system",
+		icon: TrendingUp,
+		children: [
+			{
+				label: "그리드 트레이더",
+				href: "/trading-system/grid-trader",
+				icon: Grid3X3,
 			},
 		],
 	},

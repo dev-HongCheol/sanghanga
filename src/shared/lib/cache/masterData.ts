@@ -7,7 +7,7 @@
 
 import { kiwoomClient } from "../kiwoom/client";
 import { logger } from "../logger";
-import { cacheManager, CacheKeys } from "./cacheManager";
+import { CacheKeys, cacheManager } from "./cacheManager";
 
 /**
  * 마스터 데이터 종목 정보
@@ -54,7 +54,7 @@ function getTodayDateString(): string {
  * 문자열 숫자를 Number로 안전하게 변환
  */
 function safeParseNumber(value: string): number {
-	const parsed = parseFloat(value);
+	const parsed = Number.parseFloat(value);
 	return Number.isNaN(parsed) ? 0 : parsed;
 }
 
@@ -76,7 +76,7 @@ function parsePrice(value: string): number {
  */
 export async function loadPrevDayVolumeMaster(
 	market: "ALL" | "KOSPI" | "KOSDAQ" = "ALL",
-	forceRefresh = false,
+	forceRefresh = false
 ): Promise<MasterStockData[]> {
 	const today = getTodayDateString();
 	const cacheKey = CacheKeys.prevDayVolume(today, market);
@@ -97,20 +97,17 @@ export async function loadPrevDayVolumeMaster(
 	const marketCode = market === "KOSPI" ? "001" : market === "KOSDAQ" ? "101" : "000";
 
 	try {
-		const response = await kiwoomClient.request<PrevDayVolumeRankingResponse>(
-			"/api/dostk/rkinfo",
-			{
-				method: "POST",
-				headers: { "api-id": "ka10031" },
-				body: JSON.stringify({
-					mrkt_tp: marketCode,
-					qry_tp: "2", // 2: 전일거래대금
-					rank_strt: "0",
-					rank_end: "100", // 상위 100개
-					stex_tp: "3",
-				}),
-			},
-		);
+		const response = await kiwoomClient.request<PrevDayVolumeRankingResponse>("/api/dostk/rkinfo", {
+			method: "POST",
+			headers: { "api-id": "ka10031" },
+			body: JSON.stringify({
+				mrkt_tp: marketCode,
+				qry_tp: "2", // 2: 전일거래대금
+				rank_strt: "0",
+				rank_end: "100", // 상위 100개
+				stex_tp: "3",
+			}),
+		});
 
 		// 데이터 변환
 		const masterData: MasterStockData[] = response.pred_trde_qty_upper.map((item) => {
@@ -181,7 +178,7 @@ export async function getMarketCap(stockCode: string): Promise<number> {
 			body: JSON.stringify({ stk_cd: stockCode }),
 		});
 
-		const marketCap = parseFloat(response.mac || "0");
+		const marketCap = Number.parseFloat(response.mac || "0");
 
 		// 캐시 저장 (익일 00:00까지)
 		const now = new Date();
@@ -212,7 +209,7 @@ export async function getMarketCap(stockCode: string): Promise<number> {
 export async function getMarketCapBatch(
 	stockCodes: string[],
 	batchSize = 3,
-	delayMs = 200,
+	delayMs = 200
 ): Promise<Map<string, number>> {
 	const result = new Map<string, number>();
 
