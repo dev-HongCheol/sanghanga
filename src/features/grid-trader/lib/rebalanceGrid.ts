@@ -28,7 +28,10 @@ export interface RebalanceResult {
  * @returns 리밸런싱 결과
  */
 export async function rebalanceGrid(strategy: GridStrategy): Promise<RebalanceResult> {
-	logger.info("RebalanceGrid", "리밸런싱 시작", { strategyId: strategy.id, stockCode: strategy.stock_code });
+	logger.info("RebalanceGrid", "리밸런싱 시작", {
+		strategyId: strategy.id,
+		stockCode: strategy.stock_code,
+	});
 
 	// 1. 미체결 주문 목록 조회
 	const pendingOrders = await getPendingOrders(strategy.id);

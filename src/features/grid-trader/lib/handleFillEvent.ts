@@ -3,6 +3,8 @@ import type { GridOrder, GridStrategy } from "@/entities/grid-trader";
 import { logger } from "@/shared/lib/logger";
 import { getAccountBalanceAction } from "../api/getAccountBalance.action";
 import { placeOrderAction } from "../api/placeOrder.action";
+import { adjustToTickSize } from "./adjustToTickSize";
+import { matchStockCode } from "./matchStockCode";
 
 /**
  * 체결 이벤트를 처리하고 반대 방향 카운터 주문을 생성한다
@@ -20,7 +22,7 @@ export async function handleFillEvent(
 	filledOrder: GridOrder,
 	strategy: GridStrategy,
 	fillPrice: number,
-	fillTime: string,
+	fillTime: string
 ): Promise<void> {
 	logger.info("HandleFillEvent", "체결 이벤트 처리 시작", {
 		orderId: filledOrder.order_id,
@@ -62,9 +64,10 @@ export async function handleFillEvent(
 async function handleBuyFill(
 	filledOrder: GridOrder,
 	strategy: GridStrategy,
-	fillPrice: number,
+	fillPrice: number
 ): Promise<void> {
-	const sellPrice = fillPrice + strategy.grid_gap;
+	// 호가 단위 조정 (매도는 올림으로 유리하게)
+	const sellPrice = adjustToTickSize(fillPrice + strategy.grid_gap, "up");
 
 	// 목표가 미만 매도 금지
 	if (strategy.target_price !== null && sellPrice < strategy.target_price) {
@@ -78,14 +81,16 @@ async function handleBuyFill(
 	// 보유 수량 확인 (minHoldingLimit 제약)
 	const balanceResult = await getAccountBalanceAction();
 	if (!balanceResult.success) {
-		logger.error("HandleFillEvent", "잔고 조회 실패로 카운터 매도 주문 생략", { error: balanceResult.error });
+		logger.error("HandleFillEvent", "잔고 조회 실패로 카운터 매도 주문 생략", {
+			error: balanceResult.error,
+		});
 		return;
 	}
 
-	const holding = balanceResult.balance.holdings.find(
-		(h) => h.stockCode === filledOrder.stock_code,
+	const holding = balanceResult.balance.holdings.find((h) =>
+		matchStockCode(h.stockCode, filledOrder.stock_code)
 	);
-	const currentQty = holding?.tradableQuantity ?? 0;
+	const currentQty = holding?.quantity ?? 0;
 	if (currentQty - strategy.quantity_per_grid <= strategy.min_holding_limit) {
 		logger.warn("HandleFillEvent", "보유 수량 부족으로 카운터 매도 주문 생략", {
 			currentQty,
@@ -113,7 +118,10 @@ async function handleBuyFill(
 			status: "PENDING",
 			filled_at: null,
 		});
-		logger.info("HandleFillEvent", "카운터 매도 주문 완료", { sellPrice, orderNo: result.result.orderNo });
+		logger.info("HandleFillEvent", "카운터 매도 주문 완료", {
+			sellPrice,
+			orderNo: result.result.orderNo,
+		});
 	} else {
 		logger.error("HandleFillEvent", "카운터 매도 주문 실패", { sellPrice, error: result.error });
 	}
@@ -125,15 +133,18 @@ async function handleBuyFill(
 async function handleSellFill(
 	filledOrder: GridOrder,
 	strategy: GridStrategy,
-	fillPrice: number,
+	fillPrice: number
 ): Promise<void> {
-	const buyPrice = fillPrice - strategy.grid_gap;
+	// 호가 단위 조정 (매수는 내림으로 유리하게)
+	const buyPrice = adjustToTickSize(fillPrice - strategy.grid_gap, "down");
 	if (buyPrice <= 0) return;
 
 	// 예수금 확인
 	const balanceResult = await getAccountBalanceAction();
 	if (!balanceResult.success) {
-		logger.error("HandleFillEvent", "잔고 조회 실패로 카운터 매수 주문 생략", { error: balanceResult.error });
+		logger.error("HandleFillEvent", "잔고 조회 실패로 카운터 매수 주문 생략", {
+			error: balanceResult.error,
+		});
 		return;
 	}
 
@@ -165,7 +176,10 @@ async function handleSellFill(
 			status: "PENDING",
 			filled_at: null,
 		});
-		logger.info("HandleFillEvent", "카운터 매수 주문 완료", { buyPrice, orderNo: result.result.orderNo });
+		logger.info("HandleFillEvent", "카운터 매수 주문 완료", {
+			buyPrice,
+			orderNo: result.result.orderNo,
+		});
 	} else {
 		logger.error("HandleFillEvent", "카운터 매수 주문 실패", { buyPrice, error: result.error });
 	}

@@ -5,6 +5,7 @@ import { getAccountBalanceAction } from "../api/getAccountBalance.action";
 import { getCurrentPriceAction } from "../api/getCurrentPrice.action";
 import { placeOrderAction } from "../api/placeOrder.action";
 import { calculateGrid } from "./calculateGrid";
+import { matchStockCode } from "./matchStockCode";
 
 /** Rate limiting: 주문 간 대기 시간 (ms) */
 const ORDER_INTERVAL_MS = 500;
@@ -39,7 +40,10 @@ export interface DeployGridResult {
  * @returns 배치 결과 (성공/실패 주문 수)
  */
 export async function deployGrid(strategy: GridStrategy): Promise<DeployGridResult> {
-	logger.info("DeployGrid", "그리드 배치 시작", { strategyId: strategy.id, stockCode: strategy.stock_code });
+	logger.info("DeployGrid", "그리드 배치 시작", {
+		strategyId: strategy.id,
+		stockCode: strategy.stock_code,
+	});
 
 	const [priceResult, balanceResult] = await Promise.all([
 		getCurrentPriceAction(strategy.stock_code),
@@ -58,25 +62,31 @@ export async function deployGrid(strategy: GridStrategy): Promise<DeployGridResu
 		currentPrice,
 		strategy.grid_gap,
 		strategy.upper_grid_count,
-		strategy.lower_grid_count,
+		strategy.lower_grid_count
 	);
 
-	const holding = balanceResult.balance.holdings.find(
-		(h) => h.stockCode === strategy.stock_code,
+	const holding = balanceResult.balance.holdings.find((h) =>
+		matchStockCode(h.stockCode, strategy.stock_code)
 	);
-	const tradableQty = holding?.tradableQuantity ?? 0;
+	const totalQty = holding?.quantity ?? 0;
 	let availableDeposit = balanceResult.balance.estimatedDepositAsset;
-	// 매도 가능 수량 = 보유 가능 수량 - Core 물량
-	let sellableQty = Math.max(0, tradableQty - strategy.min_holding_limit);
+
+	// 매도 가능 수량 = 총 보유 수량 - Core 물량
+	let sellableQty = Math.max(0, totalQty - strategy.min_holding_limit);
 
 	let placed = 0;
 	let failed = 0;
 
 	// 매수 주문: 높은 가격 순(현재가에 가까운 것 먼저)
+	// calculateGrid에서 이미 호가 단위로 조정된 가격을 사용
 	for (const price of buyPrices) {
 		const requiredDeposit = price * strategy.quantity_per_grid;
 		if (availableDeposit < requiredDeposit) {
-			logger.warn("DeployGrid", "예수금 부족으로 매수 주문 생략", { price, requiredDeposit, availableDeposit });
+			logger.warn("DeployGrid", "예수금 부족으로 매수 주문 생략", {
+				price,
+				requiredDeposit,
+				availableDeposit,
+			});
 			break;
 		}
 
@@ -110,14 +120,24 @@ export async function deployGrid(strategy: GridStrategy): Promise<DeployGridResu
 	}
 
 	// 매도 주문: 낮은 가격 순(현재가에 가까운 것 먼저)
+	// calculateGrid에서 이미 호가 단위로 조정된 가격을 사용
 	for (const price of sellPrices) {
 		if (sellableQty < strategy.quantity_per_grid) {
-			logger.warn("DeployGrid", "보유 수량 부족으로 매도 주문 중단", { price, sellableQty, minHoldingLimit: strategy.min_holding_limit });
+			logger.warn("DeployGrid", "보유 수량 부족으로 매도 주문 중단", {
+				price,
+				totalQty,
+				sellableQty,
+				minHoldingLimit: strategy.min_holding_limit,
+				quantityPerGrid: strategy.quantity_per_grid,
+			});
 			break;
 		}
 		// 목표가 미만 매도 금지
 		if (strategy.target_price !== null && price < strategy.target_price) {
-			logger.info("DeployGrid", "목표가 미만 매도 주문 생략", { price, targetPrice: strategy.target_price });
+			logger.info("DeployGrid", "목표가 미만 매도 주문 생략", {
+				price,
+				targetPrice: strategy.target_price,
+			});
 			continue;
 		}
 

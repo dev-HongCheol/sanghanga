@@ -1,21 +1,23 @@
-import { getActiveStrategies, getPendingOrders } from "@/entities/grid-trader";
+import { cancelOrders, getActiveStrategies, getPendingOrders } from "@/entities/grid-trader";
 import type { GridStrategy } from "@/entities/grid-trader";
 import { logger } from "@/shared/lib/logger";
-import { getFilledOrdersAction } from "../api/getOrders.action";
+import { getFilledOrdersAction, getPendingOrdersAction } from "../api/getOrders.action";
 import { handleFillEvent } from "./handleFillEvent";
 
 /**
- * 단일 전략의 체결 이벤트를 감지하고 처리한다
+ * 단일 전략의 체결 이벤트 감지 및 주문 동기화
  *
- * DB의 PENDING 주문과 키움 API 체결 목록을 비교해 새 체결을 감지한다
+ * 1. DB의 PENDING 주문과 키움 API 체결 목록 비교 → 새 체결 감지
+ * 2. DB의 PENDING 주문과 키움 API 미체결 목록 비교 → 취소된 주문 감지 (키움 앱에서 수동 취소)
  *
  * @param strategy - 감지할 그리드 전략
  * @returns 처리된 체결 수
  */
 async function pollFillsForStrategy(strategy: GridStrategy): Promise<number> {
-	const [pendingOrders, fillsResult] = await Promise.all([
+	const [dbPendingOrders, fillsResult, apiPendingResult] = await Promise.all([
 		getPendingOrders(strategy.id),
 		getFilledOrdersAction(strategy.stock_code),
+		getPendingOrdersAction(strategy.stock_code),
 	]);
 
 	if (!fillsResult.success) {
@@ -27,14 +29,16 @@ async function pollFillsForStrategy(strategy: GridStrategy): Promise<number> {
 		return 0;
 	}
 
-	if (pendingOrders.length === 0) return 0;
+	if (dbPendingOrders.length === 0) return 0;
 
 	// DB 미체결 주문번호 → order 매핑
-	const pendingMap = new Map(pendingOrders.map((o) => [o.order_id, o]));
+	const dbPendingMap = new Map(dbPendingOrders.map((o) => [o.order_id, o]));
 
 	let processed = 0;
+
+	// 1. 체결된 주문 처리
 	for (const fill of fillsResult.orders) {
-		const dbOrder = pendingMap.get(fill.orderNo);
+		const dbOrder = dbPendingMap.get(fill.orderNo);
 		if (!dbOrder) continue; // 우리 주문이 아닌 체결
 
 		logger.info("PollFills", "신규 체결 감지", {
@@ -52,6 +56,40 @@ async function pollFillsForStrategy(strategy: GridStrategy): Promise<number> {
 				error: err instanceof Error ? err.message : String(err),
 			});
 		}
+	}
+
+	// 2. 취소된 주문 동기화 (키움 앱에서 수동 취소 감지)
+	if (apiPendingResult.success) {
+		// 키움 API 미체결 주문번호 Set
+		const apiPendingSet = new Set(apiPendingResult.orders.map((o) => o.orderNo));
+
+		// DB에는 있는데 키움에는 없는 주문 = 취소된 주문
+		const cancelledOrderIds = dbPendingOrders
+			.filter((dbOrder) => !apiPendingSet.has(dbOrder.order_id))
+			.map((o) => o.order_id);
+
+		if (cancelledOrderIds.length > 0) {
+			logger.info("PollFills", "취소된 주문 감지 (키움 앱에서 수동 취소)", {
+				strategyId: strategy.id,
+				count: cancelledOrderIds.length,
+				orderIds: cancelledOrderIds,
+			});
+
+			try {
+				await cancelOrders(cancelledOrderIds);
+				logger.info("PollFills", "취소된 주문 DB 동기화 완료", {
+					count: cancelledOrderIds.length,
+				});
+			} catch (err) {
+				logger.error("PollFills", "취소된 주문 DB 동기화 실패", {
+					error: err instanceof Error ? err.message : String(err),
+				});
+			}
+		}
+	} else {
+		logger.warn("PollFills", "키움 API 미체결 조회 실패 - 동기화 스킵", {
+			error: apiPendingResult.error,
+		});
 	}
 
 	return processed;
