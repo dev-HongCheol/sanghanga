@@ -14,9 +14,7 @@ import type { StockIntersection } from "../model/screener.types";
  * // 결과: [{ stockCode: "005930", changeRate: 2.5, prevDayVolume: 1000 }]
  * ```
  */
-export function calculateIntersection(
-	lists: StockIntersection[][],
-): StockIntersection[] {
+export function calculateIntersection(lists: StockIntersection[][]): StockIntersection[] {
 	if (lists.length === 0) {
 		return [];
 	}
@@ -29,9 +27,7 @@ export function calculateIntersection(
 	const [first, ...rest] = lists;
 
 	// 각 리스트를 Map으로 변환 (종목코드 → 종목 정보)
-	const restMaps = rest.map(
-		(list) => new Map(list.map((stock) => [stock.stockCode, stock])),
-	);
+	const restMaps = rest.map((list) => new Map(list.map((stock) => [stock.stockCode, stock])));
 
 	// 첫 번째 리스트에서 모든 나머지 리스트에 포함된 종목만 필터링 + 데이터 병합
 	return first
@@ -69,7 +65,7 @@ export function calculateIntersection(
  */
 export function calculateIntersectionByFilters(
 	allLists: Record<string, StockIntersection[]>,
-	enabledFilters: string[],
+	enabledFilters: string[]
 ): StockIntersection[] {
 	const activeLists = enabledFilters
 		.map((key) => allLists[key])

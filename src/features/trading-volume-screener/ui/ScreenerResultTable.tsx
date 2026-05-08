@@ -1,7 +1,7 @@
 "use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card";
 import { ColoredValue } from "@/shared/ui";
+import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card";
 import { ArrowDown, ArrowUp, Minus } from "lucide-react";
 import type { ScreenerResult } from "../model/screener.types";
 
@@ -28,9 +28,7 @@ export function ScreenerResultTable({ results }: ScreenerResultTableProps) {
 	return (
 		<Card>
 			<CardHeader>
-				<CardTitle className="text-lg">
-					검색 결과 ({results.length}개 종목)
-				</CardTitle>
+				<CardTitle className="text-lg">검색 결과 ({results.length}개 종목)</CardTitle>
 			</CardHeader>
 			<CardContent>
 				<div className="overflow-x-auto">
@@ -42,31 +40,18 @@ export function ScreenerResultTable({ results }: ScreenerResultTableProps) {
 								<th className="px-4 py-3 text-right font-medium">현재가</th>
 								<th className="px-4 py-3 text-right font-medium">등락률</th>
 								<th className="px-4 py-3 text-right font-medium">시가총액</th>
-								<th className="px-4 py-3 text-right font-medium">
-									전일 거래대금
-								</th>
-								<th className="px-4 py-3 text-right font-medium">
-									당일 거래대금
-								</th>
+								<th className="px-4 py-3 text-right font-medium">전일 거래대금</th>
+								<th className="px-4 py-3 text-right font-medium">당일 거래대금</th>
 								<th className="px-4 py-3 text-center font-medium">패턴</th>
 							</tr>
 						</thead>
 						<tbody>
 							{results.map((result) => (
-								<tr
-									key={result.stockCode}
-									className="border-b transition-colors hover:bg-muted/50"
-								>
-									<td className="px-4 py-3 font-mono text-sm">
-										{result.stockCode}
-									</td>
+								<tr key={result.stockCode} className="border-b transition-colors hover:bg-muted/50">
+									<td className="px-4 py-3 font-mono text-sm">{result.stockCode}</td>
 									<td className="px-4 py-3 font-medium">{result.stockName}</td>
 									<td className="px-4 py-3 text-right font-mono">
-										<ColoredValue
-											value={result.currentPrice}
-											change={result.changeRate}
-										/>
-										원
+										<ColoredValue value={result.currentPrice} change={result.changeRate} />원
 									</td>
 									<td className="px-4 py-3 text-right font-mono">
 										<ColoredValue value={result.changeRate} showSign />%

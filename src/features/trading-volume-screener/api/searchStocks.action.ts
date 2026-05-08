@@ -1,11 +1,8 @@
 "use server";
 
+import { getMarketCapBatch, loadPrevDayVolumeMaster } from "@/shared/lib/cache/masterData";
 import { kiwoomClient } from "@/shared/lib/kiwoom/client";
 import { logger } from "@/shared/lib/logger";
-import {
-	loadPrevDayVolumeMaster,
-	getMarketCapBatch,
-} from "@/shared/lib/cache/masterData";
 import { calculateIntersectionByFilters } from "../lib/intersection";
 import { transformChangeRateRanking, transformCurrentDayVolumeRanking } from "../lib/transformers";
 import { validateCandleVolume, validateTrendPattern } from "../lib/validators";
@@ -48,7 +45,7 @@ function getMarketCode(market: StockScreenerFormValues["market"]): "000" | "001"
 export async function searchStocksAction(
 	values: StockScreenerFormValues,
 	page = 1,
-	pageSize = 25,
+	pageSize = 25
 ): Promise<
 	| { success: true; results: ScreenerResult[]; totalCount: number; hasMore: boolean }
 	| { success: false; error: string }
@@ -98,7 +95,7 @@ export async function searchStocksAction(
 					logger.info("SearchStocksAction", "[B] 전일 거래대금 캐시 조회 완료", {
 						count: allLists.prevDayVolume.length,
 					});
-				}),
+				})
 			);
 		}
 
@@ -128,7 +125,7 @@ export async function searchStocksAction(
 						logger.info("SearchStocksAction", "[C] 실시간 수급 조회 완료", {
 							count: allLists.realtimeVolume.length,
 						});
-					}),
+					})
 			);
 		}
 
@@ -158,7 +155,7 @@ export async function searchStocksAction(
 						logger.info("SearchStocksAction", "[D] 상승 지속성 조회 완료", {
 							count: allLists.trend.length,
 						});
-					}),
+					})
 			);
 		}
 
@@ -215,33 +212,31 @@ export async function searchStocksAction(
 			const batch = pagedIntersection.slice(i, i + batchSize);
 
 			const batchPromises = batch.map(async (stock) => {
-			try {
-				// intersection에서 받은 데이터 사용 (기본값: 0 또는 sideways)
-				let marketCap = 0;
-				let changeRate = stock.changeRate ?? 0;
-				let prevDayVolume = stock.prevDayVolume ?? 0;
-				let currentDayVolume = stock.currentDayVolume ?? 0;
-				let trendPattern: "up" | "down" | "sideways" = "sideways";
+				try {
+					// intersection에서 받은 데이터 사용 (기본값: 0 또는 sideways)
+					let marketCap = 0;
+					const changeRate = stock.changeRate ?? 0;
+					const prevDayVolume = stock.prevDayVolume ?? 0;
+					let currentDayVolume = stock.currentDayVolume ?? 0;
+					let trendPattern: "up" | "down" | "sideways" = "sideways";
 
-				// [A] 시가총액 검증 (캐시된 배치 결과 사용)
-				if (values.marketCap.enabled) {
-					marketCap = marketCapMap.get(stock.stockCode) ?? 0;
+					// [A] 시가총액 검증 (캐시된 배치 결과 사용)
+					if (values.marketCap.enabled) {
+						marketCap = marketCapMap.get(stock.stockCode) ?? 0;
 
-					if (marketCap < values.marketCap.min) {
-						logger.debug("SearchStocksAction", "시가총액 필터 실패", {
-							stock: stock.stockName,
-							marketCap,
-							min: values.marketCap.min,
-						});
-						return null;
+						if (marketCap < values.marketCap.min) {
+							logger.debug("SearchStocksAction", "시가총액 필터 실패", {
+								stock: stock.stockName,
+								marketCap,
+								min: values.marketCap.min,
+							});
+							return null;
+						}
 					}
-				}
 
-				// [D] 상승 지속성 검증
-				if (values.trend.enabled) {
-					const candleData = await kiwoomClient.request<CandleChartResponse>(
-						"/api/dostk/chart",
-						{
+					// [D] 상승 지속성 검증
+					if (values.trend.enabled) {
+						const candleData = await kiwoomClient.request<CandleChartResponse>("/api/dostk/chart", {
 							method: "POST",
 							headers: { "api-id": "ka10080" },
 							body: JSON.stringify({
@@ -249,74 +244,70 @@ export async function searchStocksAction(
 								tic_scope: String(values.trend.period),
 								upd_stkpc_tp: "1",
 							}),
-						},
-					);
-
-					const isValidPattern = validateTrendPattern(
-						candleData.stk_min_pole_chart_qry,
-						values.trend.consecutiveBars,
-						values.trend.direction,
-						values.trend.priceType,
-					);
-
-					if (!isValidPattern) {
-						logger.debug("SearchStocksAction", "패턴 필터 실패", {
-							stock: stock.stockName,
 						});
-						return null;
-					}
 
-					trendPattern = values.trend.direction === "up" ? "up" : "down";
-
-					// [C] 실시간 수급 검증 (분봉 데이터로)
-					if (values.realtimeVolume.enabled) {
-						const isValidVolume = validateCandleVolume(
+						const isValidPattern = validateTrendPattern(
 							candleData.stk_min_pole_chart_qry,
-							values.realtimeVolume.candleOffset,
-							values.realtimeVolume.min,
+							values.trend.consecutiveBars,
+							values.trend.direction,
+							values.trend.priceType
 						);
 
-						if (!isValidVolume) {
-							logger.debug("SearchStocksAction", "실시간 수급 필터 실패", {
+						if (!isValidPattern) {
+							logger.debug("SearchStocksAction", "패턴 필터 실패", {
 								stock: stock.stockName,
 							});
 							return null;
 						}
 
-						// 거래대금 계산
-						const candle =
-							candleData.stk_min_pole_chart_qry[
-								values.realtimeVolume.candleOffset
-							];
-						if (candle) {
-							const price = parseFloat(candle.cur_prc);
-							const quantity = parseFloat(candle.trde_qty);
-							currentDayVolume = (price * quantity) / 100000000; // 억원
+						trendPattern = values.trend.direction === "up" ? "up" : "down";
+
+						// [C] 실시간 수급 검증 (분봉 데이터로)
+						if (values.realtimeVolume.enabled) {
+							const isValidVolume = validateCandleVolume(
+								candleData.stk_min_pole_chart_qry,
+								values.realtimeVolume.candleOffset,
+								values.realtimeVolume.min
+							);
+
+							if (!isValidVolume) {
+								logger.debug("SearchStocksAction", "실시간 수급 필터 실패", {
+									stock: stock.stockName,
+								});
+								return null;
+							}
+
+							// 거래대금 계산
+							const candle = candleData.stk_min_pole_chart_qry[values.realtimeVolume.candleOffset];
+							if (candle) {
+								const price = Number.parseFloat(candle.cur_prc);
+								const quantity = Number.parseFloat(candle.trde_qty);
+								currentDayVolume = (price * quantity) / 100000000; // 억원
+							}
 						}
 					}
-				}
 
-				// trend 필터가 비활성화된 경우 등락률로 패턴 판단
-				if (!values.trend.enabled && changeRate !== 0) {
-					trendPattern = changeRate > 0 ? "up" : "down";
-				}
+					// trend 필터가 비활성화된 경우 등락률로 패턴 판단
+					if (!values.trend.enabled && changeRate !== 0) {
+						trendPattern = changeRate > 0 ? "up" : "down";
+					}
 
-				// 성공
-				logger.debug("SearchStocksAction", "종목 검증 성공", {
-					stock: stock.stockName,
-				});
+					// 성공
+					logger.debug("SearchStocksAction", "종목 검증 성공", {
+						stock: stock.stockName,
+					});
 
-				return {
-					stockCode: stock.stockCode,
-					stockName: stock.stockName,
-					currentPrice: stock.currentPrice,
-					changeRate,
-					marketCap,
-					prevDayVolume,
-					currentDayVolume,
-					trendPattern,
-				} satisfies ScreenerResult;
-			} catch (error) {
+					return {
+						stockCode: stock.stockCode,
+						stockName: stock.stockName,
+						currentPrice: stock.currentPrice,
+						changeRate,
+						marketCap,
+						prevDayVolume,
+						currentDayVolume,
+						trendPattern,
+					} satisfies ScreenerResult;
+				} catch (error) {
 					logger.error("SearchStocksAction", "종목 검증 실패", {
 						stock: stock.stockName,
 						error: error instanceof Error ? error.message : String(error),

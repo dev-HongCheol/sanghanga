@@ -11,7 +11,7 @@ import type {
  * @returns 숫자 (파싱 실패 시 0)
  */
 function safeParseNumber(value: string): number {
-	const parsed = parseFloat(value);
+	const parsed = Number.parseFloat(value);
 	return Number.isNaN(parsed) ? 0 : parsed;
 }
 
@@ -29,7 +29,7 @@ function parsePrice(value: string): number {
  * 전일 거래량 상위 API 응답을 StockIntersection 배열로 변환
  */
 export function transformPrevDayVolumeRanking(
-	response: PrevDayVolumeRankingResponse,
+	response: PrevDayVolumeRankingResponse
 ): StockIntersection[] {
 	return response.pred_trde_qty_upper.map((item) => {
 		const currentPrice = parsePrice(item.cur_prc);
@@ -50,7 +50,7 @@ export function transformPrevDayVolumeRanking(
  * 당일 거래량 상위 API 응답을 StockIntersection 배열로 변환
  */
 export function transformCurrentDayVolumeRanking(
-	response: CurrentDayVolumeRankingResponse,
+	response: CurrentDayVolumeRankingResponse
 ): StockIntersection[] {
 	return response.tdy_trde_qty_upper.map((item) => {
 		const currentPrice = parsePrice(item.cur_prc);
@@ -72,7 +72,7 @@ export function transformCurrentDayVolumeRanking(
  * 등락률 상위 API 응답을 StockIntersection 배열로 변환
  */
 export function transformChangeRateRanking(
-	response: ChangeRateRankingResponse,
+	response: ChangeRateRankingResponse
 ): StockIntersection[] {
 	return response.pred_pre_flu_rt_upper.map((item) => {
 		const currentPrice = parsePrice(item.cur_prc);

@@ -7,10 +7,7 @@ import type { CandleChartResponse } from "../model/screener.types";
  * @param minMarketCap - 최소 시가총액 (억원)
  * @returns 조건 만족 여부
  */
-export function validateMarketCap(
-	marketCap: number,
-	minMarketCap: number,
-): boolean {
+export function validateMarketCap(marketCap: number, minMarketCap: number): boolean {
 	return marketCap >= minMarketCap;
 }
 
@@ -34,7 +31,7 @@ export function validateTrendPattern(
 	candles: CandleChartResponse["stk_min_pole_chart_qry"],
 	consecutiveBars: number,
 	direction: "up" | "down",
-	priceType: "close" | "high" | "low",
+	priceType: "close" | "high" | "low"
 ): boolean {
 	// 필요한 봉 개수보다 데이터가 적으면 false
 	if (candles.length < consecutiveBars + 1) {
@@ -43,16 +40,12 @@ export function validateTrendPattern(
 
 	// 가격 필드 선택
 	const priceField =
-		priceType === "close"
-			? "cur_prc"
-			: priceType === "high"
-				? "high_pric"
-				: "low_pric";
+		priceType === "close" ? "cur_prc" : priceType === "high" ? "high_pric" : "low_pric";
 
 	// 연속 패턴 검증
 	for (let i = 0; i < consecutiveBars; i++) {
-		const currentPrice = parseFloat(candles[i][priceField]);
-		const prevPrice = parseFloat(candles[i + 1][priceField]);
+		const currentPrice = Number.parseFloat(candles[i][priceField]);
+		const prevPrice = Number.parseFloat(candles[i + 1][priceField]);
 
 		if (direction === "up") {
 			// 상승: 현재가 > 이전가
@@ -81,15 +74,15 @@ export function validateTrendPattern(
 export function validateCandleVolume(
 	candles: CandleChartResponse["stk_min_pole_chart_qry"],
 	candleOffset: number,
-	minVolume: number,
+	minVolume: number
 ): boolean {
 	if (candles.length <= candleOffset) {
 		return false;
 	}
 
 	const candle = candles[candleOffset];
-	const price = parseFloat(candle.cur_prc);
-	const quantity = parseFloat(candle.trde_qty);
+	const price = Number.parseFloat(candle.cur_prc);
+	const quantity = Number.parseFloat(candle.trde_qty);
 
 	// 거래대금 = 거래량 × 종가 (근사값)
 	const volumeInHundredMillion = (price * quantity) / 100000000; // 억원 단위
