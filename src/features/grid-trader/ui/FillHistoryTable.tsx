@@ -1,13 +1,6 @@
 import type { FillEvent } from "@/entities/grid-trader";
 import { Badge } from "@/shared/ui/badge";
-import {
-	Table,
-	TableBody,
-	TableCell,
-	TableHead,
-	TableHeader,
-	TableRow,
-} from "@/shared/ui/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 
 interface FillHistoryTableProps {
 	/** 체결 이벤트 목록 (최근 10개) */
@@ -22,9 +15,7 @@ interface FillHistoryTableProps {
  */
 export function FillHistoryTable({ fills }: FillHistoryTableProps) {
 	if (fills.length === 0) {
-		return (
-			<p className="py-8 text-center text-sm text-muted-foreground">체결 내역이 없습니다.</p>
-		);
+		return <p className="py-8 text-center text-sm text-muted-foreground">체결 내역이 없습니다.</p>;
 	}
 
 	return (

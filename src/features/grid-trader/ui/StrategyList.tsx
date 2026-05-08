@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import type { GridStrategy } from "@/entities/grid-trader";
 import { Button } from "@/shared/ui/button";
 import {
@@ -10,6 +9,7 @@ import {
 	DialogTitle,
 	DialogTrigger,
 } from "@/shared/ui/dialog";
+import { useState } from "react";
 import { GridStrategyForm } from "./GridStrategyForm";
 import { StrategyCard } from "./StrategyCard";
 
@@ -45,9 +45,7 @@ export function StrategyList({ strategies }: StrategyListProps) {
 			{strategies.length === 0 ? (
 				<div className="rounded-lg border border-dashed p-12 text-center">
 					<p className="text-muted-foreground">등록된 전략이 없습니다.</p>
-					<p className="mt-1 text-sm text-muted-foreground">
-						+ 새 전략 추가 버튼으로 시작하세요.
-					</p>
+					<p className="mt-1 text-sm text-muted-foreground">+ 새 전략 추가 버튼으로 시작하세요.</p>
 				</div>
 			) : (
 				<div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

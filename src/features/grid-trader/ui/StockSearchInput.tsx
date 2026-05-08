@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
 import { Input } from "@/shared/ui/input";
+import { useEffect, useRef, useState } from "react";
 import type { StockInfo } from "../api/searchStock.action";
 import { searchStockAction } from "../api/searchStock.action";
 

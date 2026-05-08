@@ -1,14 +1,7 @@
 import type { GridOrder } from "@/entities/grid-trader";
 import { Badge } from "@/shared/ui/badge";
 import { Separator } from "@/shared/ui/separator";
-import {
-	Table,
-	TableBody,
-	TableCell,
-	TableHead,
-	TableHeader,
-	TableRow,
-} from "@/shared/ui/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 
 interface ActiveOrdersTableProps {
 	/** 활성 주문 목록 (PENDING 상태) */
@@ -38,9 +31,7 @@ export function ActiveOrdersTable({ orders, currentPrice }: ActiveOrdersTablePro
 		.sort((a, b) => b.grid_price - a.grid_price);
 
 	if (orders.length === 0) {
-		return (
-			<p className="py-8 text-center text-sm text-muted-foreground">활성 주문이 없습니다.</p>
-		);
+		return <p className="py-8 text-center text-sm text-muted-foreground">활성 주문이 없습니다.</p>;
 	}
 
 	return (
@@ -92,17 +83,13 @@ function OrderRow({ order, currentPrice }: OrderRowProps) {
 	return (
 		<TableRow>
 			<TableCell>
-				<Badge variant={isSell ? "destructive" : "default"}>
-					{isSell ? "매도" : "매수"}
-				</Badge>
+				<Badge variant={isSell ? "destructive" : "default"}>{isSell ? "매도" : "매수"}</Badge>
 			</TableCell>
 			<TableCell className="text-right font-mono font-semibold">
 				{order.grid_price.toLocaleString()}원
 			</TableCell>
 			<TableCell className="text-right font-mono">{order.quantity}주</TableCell>
-			<TableCell
-				className={`text-right text-xs ${diff >= 0 ? "text-red-500" : "text-blue-500"}`}
-			>
+			<TableCell className={`text-right text-xs ${diff >= 0 ? "text-red-500" : "text-blue-500"}`}>
 				{diffText}
 			</TableCell>
 		</TableRow>

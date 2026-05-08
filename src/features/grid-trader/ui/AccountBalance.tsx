@@ -1,4 +1,5 @@
 import type { AccountBalance, AccountHolding } from "../api/getAccountBalance.action";
+import { matchStockCode } from "../lib/matchStockCode";
 
 interface AccountBalanceProps {
 	/** 계좌 잔고 정보 */
@@ -13,16 +14,13 @@ interface AccountBalanceProps {
  * 해당 종목의 보유 수량/평균단가/평가손익과 예수금을 표시한다.
  */
 export function AccountBalancePanel({ balance, stockCode }: AccountBalanceProps) {
-	const holding: AccountHolding | undefined = balance.holdings.find(
-		(h) => h.stockCode === stockCode,
+	const holding: AccountHolding | undefined = balance.holdings.find((h) =>
+		matchStockCode(h.stockCode, stockCode)
 	);
 
 	return (
 		<div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-			<BalanceItem
-				label="예수금"
-				value={`${balance.estimatedDepositAsset.toLocaleString()}원`}
-			/>
+			<BalanceItem label="예수금" value={`${balance.estimatedDepositAsset.toLocaleString()}원`} />
 			<BalanceItem
 				label="보유 수량"
 				value={holding ? `${holding.quantity.toLocaleString()}주` : "—"}

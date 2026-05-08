@@ -1,14 +1,12 @@
 "use client";
 
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
-import { useForm } from "react-hook-form";
-import {
-	gridStrategyCreateSchema,
-	type GridStrategyCreateFormData,
-} from "@/entities/grid-trader";
 import type { GridStrategy } from "@/entities/grid-trader";
+// value import는 배럴을 통하면 server-only 코드(gridStrategy.api.ts → supabase/server.ts)가
+// 클라이언트 번들에 포함되므로 스키마 파일을 직접 참조한다
+import {
+	type GridStrategyCreateFormData,
+	gridStrategyCreateSchema,
+} from "@/entities/grid-trader/model/gridTrader.schema";
 import { Alert, AlertDescription } from "@/shared/ui/alert";
 import { Button } from "@/shared/ui/button";
 import {
@@ -22,6 +20,10 @@ import {
 } from "@/shared/ui/form";
 import { Input } from "@/shared/ui/input";
 import { Switch } from "@/shared/ui/switch";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { useForm } from "react-hook-form";
 import { createStrategyAction } from "../api/createStrategy.action";
 import { updateStrategyAction } from "../api/updateStrategy.action";
 import { StockSearchInput } from "./StockSearchInput";
@@ -233,13 +235,11 @@ export function GridStrategyForm({ strategy, onSuccess }: GridStrategyFormProps)
 							<FormControl>
 								<Input
 									type="number"
-									min={1}
+									min={0}
 									placeholder="설정 시 목표가 미만 매도 불가"
 									value={field.value ?? ""}
 									onChange={(e) =>
-										field.onChange(
-											e.target.value === "" ? undefined : e.target.valueAsNumber,
-										)
+										field.onChange(e.target.value === "" ? undefined : e.target.valueAsNumber)
 									}
 								/>
 							</FormControl>
