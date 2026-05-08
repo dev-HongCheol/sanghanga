@@ -1,4 +1,4 @@
-import type { Tables, Enums } from "@/shared/lib/supabase/database.types";
+import type { Enums, Tables } from "@/shared/lib/supabase/database.types";
 
 /**
  * 그리드 트레이딩 전략

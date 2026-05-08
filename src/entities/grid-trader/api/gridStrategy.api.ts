@@ -5,13 +5,13 @@
 
 import { createServerClient } from "@/shared/lib/supabase/server";
 import type {
+	FillEvent,
+	FillEventInsert,
+	GridOrder,
+	GridOrderInsert,
 	GridStrategy,
 	GridStrategyInsert,
 	GridStrategyUpdate,
-	GridOrder,
-	GridOrderInsert,
-	FillEvent,
-	FillEventInsert,
 	OrderStatus,
 } from "../model/gridTrader.types";
 
@@ -25,9 +25,7 @@ import type {
  * @returns 생성된 전략
  * @throws {Error} DB 오류 시
  */
-export async function createStrategy(
-	data: GridStrategyInsert,
-): Promise<GridStrategy> {
+export async function createStrategy(data: GridStrategyInsert): Promise<GridStrategy> {
 	const supabase = await createServerClient();
 
 	const { data: strategy, error } = await supabase
@@ -50,10 +48,7 @@ export async function createStrategy(
  * @returns 수정된 전략
  * @throws {Error} DB 오류 시
  */
-export async function updateStrategy(
-	id: string,
-	data: GridStrategyUpdate,
-): Promise<GridStrategy> {
+export async function updateStrategy(id: string, data: GridStrategyUpdate): Promise<GridStrategy> {
 	const supabase = await createServerClient();
 
 	const { data: strategy, error } = await supabase
@@ -78,10 +73,7 @@ export async function updateStrategy(
 export async function deleteStrategy(id: string): Promise<void> {
 	const supabase = await createServerClient();
 
-	const { error } = await supabase
-		.from("sh_grid_strategies")
-		.delete()
-		.eq("id", id);
+	const { error } = await supabase.from("sh_grid_strategies").delete().eq("id", id);
 
 	if (error) {
 		throw new Error(`전략 삭제 실패: ${error.message}`);
@@ -94,16 +86,10 @@ export async function deleteStrategy(id: string): Promise<void> {
  * @returns 전략 데이터 또는 null
  * @throws {Error} DB 오류 시
  */
-export async function getStrategyById(
-	id: string,
-): Promise<GridStrategy | null> {
+export async function getStrategyById(id: string): Promise<GridStrategy | null> {
 	const supabase = await createServerClient();
 
-	const { data, error } = await supabase
-		.from("sh_grid_strategies")
-		.select()
-		.eq("id", id)
-		.single();
+	const { data, error } = await supabase.from("sh_grid_strategies").select().eq("id", id).single();
 
 	if (error) {
 		if (error.code === "PGRST116") {
@@ -164,10 +150,7 @@ export async function getActiveStrategies(): Promise<GridStrategy[]> {
  * @returns 수정된 전략
  * @throws {Error} DB 오류 시
  */
-export async function toggleStrategyActive(
-	id: string,
-	isActive: boolean,
-): Promise<GridStrategy> {
+export async function toggleStrategyActive(id: string, isActive: boolean): Promise<GridStrategy> {
 	const supabase = await createServerClient();
 
 	const { data: strategy, error } = await supabase
@@ -221,7 +204,7 @@ export async function createOrder(data: GridOrderInsert): Promise<GridOrder> {
 export async function updateOrderStatus(
 	orderId: string,
 	status: OrderStatus,
-	filledAt?: string,
+	filledAt?: string
 ): Promise<GridOrder> {
 	const supabase = await createServerClient();
 
@@ -253,14 +236,11 @@ export async function updateOrderStatus(
  */
 export async function getOrdersByStrategy(
 	strategyId: string,
-	status?: OrderStatus,
+	status?: OrderStatus
 ): Promise<GridOrder[]> {
 	const supabase = await createServerClient();
 
-	let query = supabase
-		.from("sh_grid_orders")
-		.select()
-		.eq("strategy_id", strategyId);
+	let query = supabase.from("sh_grid_orders").select().eq("strategy_id", strategyId);
 
 	if (status) {
 		query = query.eq("status", status);
@@ -281,15 +261,10 @@ export async function getOrdersByStrategy(
  * @returns 미체결 주문 목록
  * @throws {Error} DB 오류 시
  */
-export async function getPendingOrders(
-	strategyId?: string,
-): Promise<GridOrder[]> {
+export async function getPendingOrders(strategyId?: string): Promise<GridOrder[]> {
 	const supabase = await createServerClient();
 
-	let query = supabase
-		.from("sh_grid_orders")
-		.select()
-		.eq("status", "PENDING");
+	let query = supabase.from("sh_grid_orders").select().eq("status", "PENDING");
 
 	if (strategyId) {
 		query = query.eq("strategy_id", strategyId);
@@ -342,9 +317,7 @@ export async function cancelOrders(orderIds: string[]): Promise<void> {
  * @returns 생성된 체결 이벤트
  * @throws {Error} DB 오류 시
  */
-export async function createFillEvent(
-	data: FillEventInsert,
-): Promise<FillEvent> {
+export async function createFillEvent(data: FillEventInsert): Promise<FillEvent> {
 	const supabase = await createServerClient();
 
 	const { data: fillEvent, error } = await supabase
@@ -369,7 +342,7 @@ export async function createFillEvent(
  */
 export async function getFillEventsByStrategy(
 	strategyId: string,
-	limit: number = 10,
+	limit = 10
 ): Promise<FillEvent[]> {
 	const supabase = await createServerClient();
 
@@ -398,7 +371,7 @@ export async function getFillEventsByStrategy(
 export async function getFillEventsByDateRange(
 	strategyId: string,
 	startDate: string,
-	endDate: string,
+	endDate: string
 ): Promise<FillEvent[]> {
 	const supabase = await createServerClient();
 
