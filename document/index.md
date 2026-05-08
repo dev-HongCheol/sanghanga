@@ -23,7 +23,7 @@
 | 실시간 종목조회순위 조회     | 🚧 진행중 | 2026-03-26 | -      | [prd](./prd/stock-ranking/prd.md)     |
 | 전역 레이아웃 및 사이드바    | 🚧 진행중 | 2026-03-27 | -      | [prd](./prd/layout-sidebar/prd.md)    |
 | 거래대금 기반 종목 검색      | 📝 작성중 | 2026-03-27 | -      | [prd](./prd/trading-volume-screener/prd.md) |
-| 박스권 자동 매매 시스템      | 📝 작성중 | 2026-04-30 | -      | [prd](./prd/grid-trader/prd.md) |
+| 박스권 자동 매매 시스템      | 🚧 진행중 | 2026-04-30 | -      | [prd](./prd/grid-trader/prd.md) \| [체크리스트](./prd/grid-trader/checklist.md) \| [호가 가이드](./prd/grid-trader/tick-size-guide.md) \| [단위 테스트](./prd/grid-trader/test-spec-unit.md) \| [통합 테스트](./prd/grid-trader/test-spec-integration.md) |
 | _예시: 주문 위젯_            | _✅ 완료_ | _2024-01-15_ | _-_    | _[prd](./prd/order-widget/prd.md)_    |
 
 ### 상태 표시

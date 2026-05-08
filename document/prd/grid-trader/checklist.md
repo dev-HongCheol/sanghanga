@@ -12,6 +12,7 @@
 ### 인프라
 - [x] Supabase 클라이언트 (`shared/lib/supabase/client.ts`, `server.ts`)
 - [x] DB 타입 자동 생성 (`shared/lib/supabase/database.types.ts` — `pnpm db:types`)
+- [x] Sonner 토스트 알림 (`app/providers/Providers.tsx`)
 
 ### entities/grid-trader
 - [x] 타입 정의 (`model/gridTrader.types.ts`)
@@ -19,24 +20,28 @@
 - [x] DB API 함수 (`api/gridStrategy.api.ts`)
 
 ### Server Actions (features/grid-trader/api/)
-- [x] `createStrategy.action.ts`
-- [x] `updateStrategy.action.ts`
-- [x] `deleteStrategy.action.ts`
-- [x] `toggleStrategy.action.ts`
-- [x] `searchStock.action.ts` (ka10099)
-- [x] `getCurrentPrice.action.ts` (ka10001)
-- [x] `placeOrder.action.ts` (kt10000/kt10001)
-- [x] `modifyOrder.action.ts` (kt10002)
-- [x] `cancelOrder.action.ts` (kt10003)
-- [x] `getOrders.action.ts` (ka10075/ka10076)
-- [x] `getAccountBalance.action.ts` (kt00018)
+- [x] `createStrategy.action.ts` — 전략 생성
+- [x] `updateStrategy.action.ts` — 전략 수정
+- [x] `deleteStrategy.action.ts` — 전략 삭제
+- [x] `toggleStrategy.action.ts` — 전략 활성화/비활성화 토글
+- [x] `deployGrid.action.ts` — 그리드 배치
+- [x] `rebalanceGrid.action.ts` — 수동 리밸런싱
+- [x] `searchStock.action.ts` — 종목 검색 (ka10099)
+- [x] `getCurrentPrice.action.ts` — 현재가 조회 (ka10001)
+- [x] `placeOrder.action.ts` — 주문 접수 (kt10000/kt10001)
+- [x] `modifyOrder.action.ts` — 주문 정정 (kt10002)
+- [x] `cancelOrder.action.ts` — 주문 취소 (kt10003)
+- [x] `getOrders.action.ts` — 미체결/체결 조회 (ka10075/ka10076)
+- [x] `getAccountBalance.action.ts` — 계좌 잔고 조회 (kt00018)
 
 ### 그리드 엔진 (features/grid-trader/lib/)
+- [x] `adjustToTickSize.ts` — 호가 단위 조정 함수
 - [x] `calculateGrid.ts` — 그리드 가격 배열 계산
-- [x] `deployGrid.ts` — 초기 그리드 배치
+- [x] `deployGrid.ts` — 초기 그리드 배치 로직
 - [x] `handleFillEvent.ts` — 체결 이벤트 처리
 - [x] `rebalanceGrid.ts` — 리밸런싱 로직
 - [x] `pollFills.ts` — 체결 감지 Polling
+- [x] `matchStockCode.ts` — 종목코드 매칭 유틸리티
 
 ### Cron Jobs
 - [ ] 08:00 토큰 갱신
@@ -47,19 +52,20 @@
 - [ ] 매시간 리밸런싱 체크
 
 ### UI (features/grid-trader/ui/)
-- [x] `StrategyList.tsx`
-- [x] `StrategyCard.tsx`
-- [x] `GridStrategyForm.tsx`
-- [x] `StockSearchInput.tsx`
-- [x] `AccountBalance.tsx`
-- [x] `ActiveOrdersTable.tsx`
-- [x] `FillHistoryTable.tsx`
+- [x] `StrategyList.tsx` — 전략 목록
+- [x] `StrategyCard.tsx` — 전략 카드
+- [x] `GridStrategyForm.tsx` — 전략 설정 폼
+- [x] `StockSearchInput.tsx` — 종목 검색 입력
+- [x] `AccountBalance.tsx` — 계좌 잔고 패널
+- [x] `ActiveOrdersTable.tsx` — 활성 주문 테이블
+- [x] `FillHistoryTable.tsx` — 체결 히스토리 테이블
+- [x] `RebalanceButton.tsx` — 수동 리밸런싱 버튼
 
 ### Pages
-- [ ] `app/trading-system/grid-trader/page.tsx`
-- [ ] `app/trading-system/grid-trader/[strategyId]/page.tsx`
-- [ ] 라우트 등록 (`shared/config/routes.ts`)
-- [ ] 실시간 업데이트 (1초 polling)
+- [x] `app/trading-system/grid-trader/page.tsx` — 전략 목록 페이지
+- [x] `app/trading-system/grid-trader/[strategyId]/page.tsx` — 전략 상세 페이지
+- [x] 라우트 등록 (`shared/config/routes.ts`)
+- [x] 실시간 업데이트 (PollingRefresher 컴포넌트)
 
 ## Phase 2: 알림 및 모니터링 (v2.0)
 

@@ -42,13 +42,82 @@ pnpm start
 
 본 프로젝트는 두 AI 모델의 전문성을 결합하여 개발 효율성을 극대화합니다.
 
-1. **설계 및 기능 정의 (Claude)**: `document/prd/` 하위에 요구사항(`prd.md`)과 테스트 명세(`test-spec.md`)를 작성합니다.
+### 전체 프로세스
+
+1. **설계 및 기능 정의 (Claude)**: `document/prd/` 하위에 요구사항(`prd.md`)과 체크리스트(`checklist.md`)를 작성합니다.
 2. **코드 구현 (Claude)**: FSD 아키텍처에 따라 `src/` 하위에 비즈니스 로직과 UI를 구현합니다.
-3. **테스트 구현 및 검증 (Gemini)**:
-   - Claude의 `test-spec.md`를 기반으로 `tests/` 폴더에 테스트 코드를 작성합니다.
-   - 작업 진행 중 `test-spec.md`의 체크리스트를 **실시간으로 업데이트**합니다.
+3. **테스트 명세 작성 (Claude)**: 구현 완료 후 테스트 명세(`test-spec-unit.md`, `test-spec-integration.md`)를 작성합니다.
+4. **테스트 구현 및 검증 (Gemini)**:
+   - Claude의 테스트 명세를 기반으로 `tests/` 폴더에 테스트 코드를 작성합니다.
+   - 작업 진행 중 테스트 명세의 체크리스트를 **실시간으로 업데이트**합니다.
    - 테스트 결과와 커버리지를 문서에 기록하여 최종 검증을 완료합니다.
-4. **품질 확인**: Biome 체크, 타입 체크 및 전체 테스트 통과 여부를 확인합니다.
+5. **품질 확인**: Biome 체크, 타입 체크 및 전체 테스트 통과 여부를 확인합니다.
+
+### 문서 작성 원칙
+
+#### PRD (prd.md)
+
+**역할**: 지속적인 요구사항 정의 (Source of Truth)
+
+**포함할 내용**:
+- 개요/목적
+- **지속적인 기능 요구사항**: 비즈니스 룰, 제약 조건, 계산 공식 등
+- 기술 스택 결정 이유
+- UI 와이어프레임
+- 변경 이력 테이블 (버전별 하이레벨 요약만, 1줄)
+
+**제외할 내용**:
+- API 상세 명세 → `document/api/` 참조
+- Zod 스키마 코드 → 실제 구현 파일
+- DB 스키마 SQL → `database/schemas/` 참조
+- 구현 파일 목록 → `checklist.md`
+- 상세 변경 이력 → Git commit
+
+#### 체크리스트 (checklist.md)
+
+**역할**: 구현 파일 목록 + 핵심 역할 (Claude가 빠르게 참조)
+
+**작성 원칙**:
+
+```markdown
+### Server Actions
+- [x] `toggleStrategy.action.ts` — 전략 활성화/비활성화 토글
+- [x] `getAccountBalance.action.ts` — 계좌 잔고 조회 (kt00018)
+```
+
+- ✅ 파일의 **핵심 책임** (거의 변하지 않음)
+- ✅ API ID 번호 (키움 API인 경우)
+- ❌ 버그 수정 내역 (Git commit 참조)
+- ❌ 개선 사항 (Git commit 참조)
+
+#### 범용 인프라 변경
+
+`shared/` 레벨 변경 (logger, auth 등)은:
+- ✅ **해당 파일의 JSDoc에 상세 기록**
+- ❌ 각 기능 PRD 체크리스트에 기록하지 않음
+
+**예시**: Logger에 폴링 로그 제어 기능 추가
+```typescript
+/**
+ * @fileoverview 서버 사이드 로깅 래퍼
+ * @description
+ * **폴링 로그 제어 시스템**:
+ * - `logger.info(context, message, meta, true)` 형태로 폴링 로그 플래그 전달
+ * - 런타임에서 `logger.setShowPollingLogs(true/false)`로 가시성 토글 가능
+ * - API 엔드포인트: `GET /api/debug/polling-logs?show=true|false`
+ */
+```
+
+#### 테스트 명세 (test-spec-*.md)
+
+**역할**: 지속적인 요구사항 → 테스트 케이스 매핑
+
+**작성 시점**: 구현 완료 후 (코드와 동기화된 상태)
+
+**내용**:
+- 요구사항별 테스트 케이스 목록
+- 핵심 테스트 패턴 (간결하게)
+- deprecated 표시 (기존 코드 변경 시)
 
 ## 교육 중심 개발 (Educational Development)
 

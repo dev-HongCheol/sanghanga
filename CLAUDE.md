@@ -50,17 +50,57 @@ PRD는 **2개 파일**로 분리하여 작성 (토큰 효율 + 변경 빈도 분
 
 ```
 document/prd/{기능명}/
-├── prd.md        # 요구사항 + 기술 결정사항 + UI (안정적, ~200줄 이내)
-└── checklist.md  # 구현 진행 상황만 (자주 업데이트)
+├── prd.md        # 지속적인 요구사항 (Source of Truth)
+└── checklist.md  # 구현 파일 목록 + 핵심 역할
 ```
 
-**prd.md에 포함**: 개요/목적, 기능 요구사항(비즈니스 룰), 기술 스택 결정 이유, UI 와이어프레임, 주의사항
+##### prd.md 작성 원칙
 
-**prd.md에서 제외** (이미 다른 곳에 있음):
+**포함할 내용**:
+- 개요/목적, **지속적인 기능 요구사항**(비즈니스 룰, 제약 조건, 계산 공식 등)
+- 기술 스택 결정 이유, UI 와이어프레임, 주의사항
+- 변경 이력 테이블 (버전별 하이레벨 요약만, 1줄)
+
+**제외할 내용** (이미 다른 곳에 있음):
 - API Request/Response 상세 → `document/api/` 참조
 - Zod 스키마 코드 → 실제 구현 파일에 있어야 함
 - DB 스키마 SQL → `database/schemas/` 참조
 - 구현 체크리스트 → `checklist.md`로 분리
+- 상세 변경 이력 → Git commit 참조
+
+##### checklist.md 작성 원칙
+
+**체크리스트는 파일의 핵심 역할만 기록** (변경 이력/버그 수정 내역 제외):
+
+```markdown
+### Server Actions
+- [x] `toggleStrategy.action.ts` — 전략 활성화/비활성화 토글
+- [x] `updateStrategy.action.ts` — 전략 수정
+- [x] `getAccountBalance.action.ts` — 계좌 잔고 조회 (kt00018)
+```
+
+**기록 원칙**:
+- ✅ 파일의 **핵심 책임** (거의 변하지 않음)
+- ✅ API ID 번호 (키움 API인 경우)
+- ❌ 버그 수정 내역 (예: "sellable qty 계산 수정")
+- ❌ 개선 사항 (예: "폴링 로그 플래그 적용")
+- ❌ 구현 상세 (Git commit + PRD 변경 이력 참조)
+
+**이유**:
+- Claude가 요구사항 → 체크리스트 보고 어떤 파일 읽을지 빠르게 판단
+- 체크리스트가 계속 깔끔하게 유지됨
+- 상세 변경은 Git commit + PRD 변경 이력 참조
+
+##### 범용 인프라 변경 처리
+
+`shared/` 레벨 변경 (logger, auth 등)은:
+- ✅ **해당 파일의 JSDoc에 상세 기록** (`@fileoverview`, `@description`, `@example`)
+- ✅ 필요하면 `document/infrastructure-changelog.md` 생성
+- ❌ 각 기능 PRD 체크리스트에 기록하지 않음 (범용 인프라이므로)
+
+**예시**: Logger에 폴링 로그 제어 기능 추가
+- ✅ `shared/lib/logger.ts`의 JSDoc에 상세 사용법 기록
+- ❌ Grid Trader 체크리스트에 "Logger 개선" 항목 추가하지 않음
 
 **상세 가이드**: [`document/development.md - 협업 워크플로우`](./document/development.md#협업-워크플로우-claude--gemini)
 
@@ -287,12 +327,19 @@ pnpm db:types   # SaaS Supabase에서 타입 재생성 → database.types.ts 덮
 
 ### 새 기능 추가
 
-1. **PRD 작성** → `document/prd/{기능명}/prd.md`
+1. **PRD 작성** → `document/prd/{기능명}/prd.md` + `checklist.md`
+   - prd.md: 지속적인 요구사항 (비즈니스 룰, 제약 조건, 계산 공식 등)
+   - checklist.md: 파일명 + 핵심 역할 (버그 수정/개선 이력 제외)
 2. **문서 참조** → architecture.md, coding-standards.md, development.md
 3. **FSD 레이어 판단** → widgets/features/entities
-4. **구현** → Server Component 우선, JSDoc 필수, PRD 체크리스트 실시간 업데이트
+4. **구현** → Server Component 우선, JSDoc 필수
+   - 파일 생성 시 체크리스트에 추가 (핵심 역할만)
+   - 새로운 요구사항 발견 시 PRD에 즉시 추가
 5. **테스트 명세 작성** → test-spec-unit.md, test-spec-integration.md
-6. **문서 업데이트** → PRD 체크 완료, `document/index.md` 상태 변경
+6. **문서 업데이트**
+   - PRD 변경 이력 추가 (버전별 하이레벨 요약 1줄)
+   - 범용 인프라 변경 시 해당 파일 JSDoc에 상세 기록
+   - `document/index.md` 상태 변경
 7. **품질 검사** → lint, test, build
 
 ### 버그 수정
@@ -300,12 +347,20 @@ pnpm db:types   # SaaS Supabase에서 타입 재생성 → database.types.ts 덮
 1. 원인 분석 → 코드 읽기, 로그 확인
 2. 최소한의 변경으로 수정
 3. 버그 재현 테스트 작성
+4. **문서 업데이트**:
+   - PRD 변경 이력에 버그 수정 요약 추가 (1줄)
+   - 체크리스트는 수정하지 않음 (핵심 역할은 변하지 않음)
+   - Git commit에 상세 내역 기록
 
 ### 리팩토링
 
 1. 기존 기능 완전 파악
 2. 규칙 준수하며 리팩토링
 3. 회귀 테스트
+4. **문서 업데이트**:
+   - 파일명 변경 시 체크리스트 업데이트
+   - 요구사항 변경 없으면 PRD 수정 불필요
+   - Git commit에 리팩토링 이유/내용 기록
 
 ## 체크리스트
 
@@ -324,14 +379,16 @@ pnpm db:types   # SaaS Supabase에서 타입 재생성 → database.types.ts 덮
 - [ ] 키움 API는 서버에서만 호출
 - [ ] **DB 객체에 sh_ prefix 필수** (테이블, 함수, 트리거, ENUM, 인덱스)
 - [ ] **DB 스키마 변경 시 3종 파일 모두 업데이트** (schema, migration, reset)
-- [ ] **PRD 체크리스트 실시간 업데이트**
+- [ ] **체크리스트 업데이트** (파일명 + 핵심 역할만, 버그 수정/개선 이력 제외)
+- [ ] **새로운 요구사항 발견 시 PRD에 즉시 추가**
+- [ ] **범용 인프라 변경 시 해당 파일 JSDoc에 상세 기록** (shared/ 레벨)
 
 ### 작업 후
 - [ ] `pnpm lint` 통과
 - [ ] `pnpm test` 통과
 - [ ] `pnpm build` 성공
 - [ ] 테스트 명세 작성 (test-spec-unit.md, test-spec-integration.md)
-- [ ] PRD 체크리스트 모두 완료
+- [ ] PRD 변경 이력 업데이트 (버전별 하이레벨 요약 1줄)
 - [ ] `document/index.md` 상태 업데이트 (✅ 완료)
 
 ## 참조 문서
