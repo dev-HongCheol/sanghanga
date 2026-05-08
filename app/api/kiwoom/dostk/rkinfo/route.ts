@@ -63,10 +63,7 @@ export async function POST(request: NextRequest) {
 		const apiId = request.headers.get("api-id");
 
 		if (!apiId) {
-			return NextResponse.json(
-				{ error: "api-id header is required" },
-				{ status: 400 },
-			);
+			return NextResponse.json({ error: "api-id header is required" }, { status: 400 });
 		}
 
 		// api-id에 따라 다른 스키마로 검증
@@ -78,10 +75,7 @@ export async function POST(request: NextRequest) {
 		} else if (apiId === "ka10027") {
 			validatedBody = ka10027Schema.parse(body);
 		} else {
-			return NextResponse.json(
-				{ error: `Unsupported api-id: ${apiId}` },
-				{ status: 400 },
-			);
+			return NextResponse.json({ error: `Unsupported api-id: ${apiId}` }, { status: 400 });
 		}
 
 		logger.info("RankingInfoAPI", `Fetching ranking info (${apiId})`, {
@@ -118,7 +112,7 @@ export async function POST(request: NextRequest) {
 					error: "Invalid request",
 					details: error.issues,
 				},
-				{ status: 400 },
+				{ status: 400 }
 			);
 		}
 
@@ -133,7 +127,7 @@ export async function POST(request: NextRequest) {
 			{
 				error: error instanceof Error ? error.message : "Failed to fetch ranking info",
 			},
-			{ status: 500 },
+			{ status: 500 }
 		);
 	}
 }

@@ -9,10 +9,7 @@ import Link from "next/link";
 export default function StockDiscoveryPage() {
 	return (
 		<div className="space-y-6">
-			<PageHeader
-				title="종목 발굴"
-				description="다양한 조건과 전략으로 투자 기회를 발굴합니다."
-			/>
+			<PageHeader title="종목 발굴" description="다양한 조건과 전략으로 투자 기회를 발굴합니다." />
 
 			<div className="grid gap-6 md:grid-cols-2">
 				{/* 거래대금 기반 */}
@@ -23,9 +20,7 @@ export default function StockDiscoveryPage() {
 								<DollarSign className="h-5 w-5" />
 								<CardTitle>거래대금 기반</CardTitle>
 							</div>
-							<CardDescription>
-								거래대금, 시가총액, 상승 패턴을 조합하여 종목 검색
-							</CardDescription>
+							<CardDescription>거래대금, 시가총액, 상승 패턴을 조합하여 종목 검색</CardDescription>
 						</CardHeader>
 						<CardContent>
 							<ul className="list-inside list-disc space-y-1 text-sm text-muted-foreground">
@@ -46,9 +41,7 @@ export default function StockDiscoveryPage() {
 								<Sparkles className="h-5 w-5" />
 								<CardTitle>테마 대장주</CardTitle>
 							</div>
-							<CardDescription>
-								테마주 분석을 통한 대장주 발굴 (개발 예정)
-							</CardDescription>
+							<CardDescription>테마주 분석을 통한 대장주 발굴 (개발 예정)</CardDescription>
 						</CardHeader>
 						<CardContent>
 							<ul className="list-inside list-disc space-y-1 text-sm text-muted-foreground">

@@ -29,10 +29,7 @@ export async function POST(request: NextRequest) {
 		const apiId = request.headers.get("api-id");
 
 		if (!apiId) {
-			return NextResponse.json(
-				{ error: "api-id header is required" },
-				{ status: 400 },
-			);
+			return NextResponse.json({ error: "api-id header is required" }, { status: 400 });
 		}
 
 		// 요청 검증
@@ -73,7 +70,7 @@ export async function POST(request: NextRequest) {
 					error: "Invalid request",
 					details: error.issues,
 				},
-				{ status: 400 },
+				{ status: 400 }
 			);
 		}
 
@@ -88,7 +85,7 @@ export async function POST(request: NextRequest) {
 			{
 				error: error instanceof Error ? error.message : "Failed to fetch stock info",
 			},
-			{ status: 500 },
+			{ status: 500 }
 		);
 	}
 }

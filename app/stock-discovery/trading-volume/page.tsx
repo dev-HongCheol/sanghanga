@@ -1,15 +1,15 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
-import { useInView } from "react-intersection-observer";
-import { PageHeader } from "@/shared/ui";
 import {
-	TradingVolumeScreenerForm,
+	type ScreenerResult,
 	ScreenerResultTable,
 	type StockScreenerFormValues,
-	type ScreenerResult,
+	TradingVolumeScreenerForm,
 	searchStocksAction,
 } from "@/features/trading-volume-screener";
+import { PageHeader } from "@/shared/ui";
+import { useCallback, useRef, useState } from "react";
+import { useInView } from "react-intersection-observer";
 
 /**
  * 거래대금 기반 종목 검색 페이지
@@ -129,9 +129,7 @@ export default function TradingVolumePage() {
 							{hasMore && (
 								<div ref={loadMoreRef} className="flex justify-center py-4">
 									{isLoadingMore && (
-										<p className="text-sm text-muted-foreground">
-											추가 로딩 중...
-										</p>
+										<p className="text-sm text-muted-foreground">추가 로딩 중...</p>
 									)}
 								</div>
 							)}
