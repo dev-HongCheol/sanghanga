@@ -97,18 +97,19 @@ export async function getCurrentPriceAction(
 		});
 
 		// 응답 데이터 파싱
+		// 키움 API는 가격 필드에 부호(+/-)를 포함해서 반환하므로 절대값 사용
 		const priceInfo: CurrentPrice = {
 			stockCode: response.stk_cd,
 			stockName: response.stk_nm,
-			currentPrice: Number.parseFloat(response.cur_prc) || 0,
+			currentPrice: Math.abs(Number.parseFloat(response.cur_prc)) || 0,
 			change: Number.parseFloat(response.pred_pre) || 0,
 			changeRate: Number.parseFloat(response.flu_rt) || 0,
-			highPrice: Number.parseFloat(response.high_pric) || 0,
-			lowPrice: Number.parseFloat(response.low_pric) || 0,
-			openPrice: Number.parseFloat(response.open_pric) || 0,
-			volume: Number.parseFloat(response.trde_qty) || 0,
-			basePrice: Number.parseFloat(response.base_pric) || 0,
-			marketCap: Number.parseFloat(response.mac) || 0,
+			highPrice: Math.abs(Number.parseFloat(response.high_pric)) || 0,
+			lowPrice: Math.abs(Number.parseFloat(response.low_pric)) || 0,
+			openPrice: Math.abs(Number.parseFloat(response.open_pric)) || 0,
+			volume: Math.abs(Number.parseFloat(response.trde_qty)) || 0,
+			basePrice: Math.abs(Number.parseFloat(response.base_pric)) || 0,
+			marketCap: Math.abs(Number.parseFloat(response.mac)) || 0,
 		};
 
 		logger.info(
