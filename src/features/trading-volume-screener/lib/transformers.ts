@@ -21,7 +21,7 @@ function safeParseNumber(value: string): number {
  * @param value - 가격 문자열
  * @returns 가격 (양수, 파싱 실패 시 0)
  */
-function parsePrice(value: string): number {
+export function parsePrice(value: string): number {
 	return Math.abs(safeParseNumber(value));
 }
 

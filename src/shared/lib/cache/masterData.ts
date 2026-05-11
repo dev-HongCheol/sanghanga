@@ -178,7 +178,7 @@ export async function getMarketCap(stockCode: string): Promise<number> {
 			body: JSON.stringify({ stk_cd: stockCode }),
 		});
 
-		const marketCap = Number.parseFloat(response.mac || "0");
+		const marketCap = Math.abs(Number.parseFloat(response.mac || "0"));
 
 		// 캐시 저장 (익일 00:00까지)
 		const now = new Date();

@@ -1,4 +1,5 @@
 import type { CandleChartResponse } from "../model/screener.types";
+import { parsePrice } from "./transformers";
 
 /**
  * 시가총액이 최소값 이상인지 검증합니다.
@@ -44,8 +45,8 @@ export function validateTrendPattern(
 
 	// 연속 패턴 검증
 	for (let i = 0; i < consecutiveBars; i++) {
-		const currentPrice = Number.parseFloat(candles[i][priceField]);
-		const prevPrice = Number.parseFloat(candles[i + 1][priceField]);
+		const currentPrice = parsePrice(candles[i][priceField]);
+		const prevPrice = parsePrice(candles[i + 1][priceField]);
 
 		if (direction === "up") {
 			// 상승: 현재가 > 이전가
@@ -81,8 +82,8 @@ export function validateCandleVolume(
 	}
 
 	const candle = candles[candleOffset];
-	const price = Number.parseFloat(candle.cur_prc);
-	const quantity = Number.parseFloat(candle.trde_qty);
+	const price = parsePrice(candle.cur_prc);
+	const quantity = parsePrice(candle.trde_qty);
 
 	// 거래대금 = 거래량 × 종가 (근사값)
 	const volumeInHundredMillion = (price * quantity) / 100000000; // 억원 단위

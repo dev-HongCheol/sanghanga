@@ -4,7 +4,7 @@ import { getMarketCapBatch, loadPrevDayVolumeMaster } from "@/shared/lib/cache/m
 import { kiwoomClient } from "@/shared/lib/kiwoom/client";
 import { logger } from "@/shared/lib/logger";
 import { calculateIntersectionByFilters } from "../lib/intersection";
-import { transformChangeRateRanking, transformCurrentDayVolumeRanking } from "../lib/transformers";
+import { parsePrice, transformChangeRateRanking, transformCurrentDayVolumeRanking } from "../lib/transformers";
 import { validateCandleVolume, validateTrendPattern } from "../lib/validators";
 import type { StockScreenerFormValues } from "../model/screener.schema";
 import type {
@@ -280,8 +280,8 @@ export async function searchStocksAction(
 							// 거래대금 계산
 							const candle = candleData.stk_min_pole_chart_qry[values.realtimeVolume.candleOffset];
 							if (candle) {
-								const price = Number.parseFloat(candle.cur_prc);
-								const quantity = Number.parseFloat(candle.trde_qty);
+								const price = parsePrice(candle.cur_prc);
+								const quantity = parsePrice(candle.trde_qty);
 								currentDayVolume = (price * quantity) / 100000000; // 억원
 							}
 						}
