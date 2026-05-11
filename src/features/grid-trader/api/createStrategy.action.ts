@@ -25,11 +25,11 @@ export async function createStrategyAction(
 		// Zod 검증
 		const validationResult = gridStrategyCreateSchema.safeParse(data);
 		if (!validationResult.success) {
-			const errorMessage = validationResult.error.errors
-				.map((e) => `${e.path.join(".")}: ${e.message}`)
+			const errorMessage = validationResult.error.issues
+				.map((e) => `${String(e.path.join("."))}: ${e.message}`)
 				.join(", ");
 			logger.warn("CreateStrategyAction", "입력값 검증 실패", {
-				errors: validationResult.error.errors,
+				errors: validationResult.error.issues,
 			});
 			return { success: false, error: `입력값 검증 실패: ${errorMessage}` };
 		}
