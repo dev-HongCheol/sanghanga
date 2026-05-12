@@ -80,7 +80,6 @@ export function GridStrategyForm({ strategy, onSuccess }: GridStrategyFormProps)
 		onSuccess?.(result.strategy);
 		if (!onSuccess) {
 			router.push(`/trading-system/grid-trader/${result.strategy.id}`);
-			router.refresh();
 		}
 	}
 
@@ -236,13 +235,14 @@ export function GridStrategyForm({ strategy, onSuccess }: GridStrategyFormProps)
 								<Input
 									type="number"
 									min={0}
-									placeholder="설정 시 목표가 미만 매도 불가"
+									placeholder="설정된 목표가 미만 매도 불가"
 									value={field.value ?? ""}
 									onChange={(e) =>
 										field.onChange(e.target.value === "" ? undefined : e.target.valueAsNumber)
 									}
 								/>
 							</FormControl>
+							<FormDescription>설정된 목표가 미만 매도 불가</FormDescription>
 							<FormMessage />
 						</FormItem>
 					)}
