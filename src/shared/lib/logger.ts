@@ -61,7 +61,8 @@ export const logger = {
 	 * @param message - 경고 메시지
 	 * @param meta - 추가 정보
 	 */
-	warn(context: string, message: string, meta?: LogMeta): void {
+	warn(context: string, message: string, meta?: LogMeta, isPolling = false): void {
+		if (isPolling && !showPollingLogs) return;
 		console.warn(formatLog("🟡", context, message), meta ? { ...meta } : "");
 	},
 
