@@ -6,12 +6,14 @@
  * - 가격 동기화: 1초마다 (활성 전략 종목 현재가)
  * - 잔고 동기화: 3초마다 (계좌 잔고)
  * - 체결 감지: 2초마다 (체결 이벤트 감지 및 카운터 주문 생성)
- * - 리밸런싱 체크: 10분마다 (그리드 이탈 시 자동 리밸런싱)
+ * - 리밸런싱 체크: 09:00~10:00 KST 1분, 이후 10분 간격 (그리드 이탈 시 자동 리밸런싱)
+ * - 미체결 주문 정리: 매일 08:00 평일 (전날 PENDING 주문 CANCELLED 처리)
  *
  * **장중 제어**:
  * - ENABLE_CRON=true 환경변수 필수
  * - 장시간(평일 09:00~18:00)만 실행 (로컬 시간 기준)
  * - 정규장(09:00~15:30) + 시간외 거래(15:40~18:00) 모두 포함
+ * - 미체결 주문 정리는 장시간 체크 없이 항상 실행
  */
 
 import cron, { type ScheduledTask } from "node-cron";
@@ -21,12 +23,16 @@ import { syncPricesLogic } from "@/features/grid-trader/lib/cron/syncPrices";
 import { syncBalanceLogic } from "@/features/grid-trader/lib/cron/syncBalance";
 import { checkFillsLogic } from "@/features/grid-trader/lib/cron/checkFills";
 import { checkRebalanceLogic } from "@/features/grid-trader/lib/cron/checkRebalance";
+import { cleanupStaleOrdersLogic } from "@/features/grid-trader/lib/cron/cleanupStaleOrders";
 
 // 환경변수
 const IS_CRON_ENABLED = process.env.ENABLE_CRON === "true";
 
 // Cron 실행 여부 플래그 (한 번만 실행)
 let isStarted = false;
+
+// 리밸런싱 마지막 실행 시각 (09:00~10:00 외 시간대의 10분 간격 제어용)
+let lastRebalanceRunAt = 0;
 
 /**
  * 가격 동기화 Cron (1초마다)
@@ -83,22 +89,53 @@ function startFillCheckCron(): ScheduledTask {
 }
 
 /**
- * 리밸런싱 체크 Cron (10분마다)
- * @description 그리드 이탈 여부 체크 및 자동 리밸런싱 (장중만)
+ * 리밸런싱 체크 Cron (09:00~10:00 KST 1분, 이후 10분 간격)
+ * @description 장 초반 급변동 대응을 위해 09:00~10:00은 1분 간격으로 체크
  */
 function startRebalanceCheckCron(): ScheduledTask {
-	const task = cron.schedule("*/10 * * * *", async () => {
+	const task = cron.schedule("* * * * *", async () => {
 		if (!IS_CRON_ENABLED) return;
+		if (!isMarketOpen()) return;
 
-		// 장시간 체크
-		if (!isMarketOpen()) {
-			return;
+		// KST 기준 현재 시각의 시(hour) 추출
+		const nowKST = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Seoul" }));
+		const hour = nowKST.getHours();
+
+		// 09:00~10:00 장 초반은 1분 간격으로 체크
+		const isVolatileHour = hour === 9;
+
+		if (!isVolatileHour) {
+			// 그 외 시간대는 10분 이상 경과 시에만 실행
+			const elapsed = Date.now() - lastRebalanceRunAt;
+			if (elapsed < 10 * 60 * 1000) return;
 		}
 
+		lastRebalanceRunAt = Date.now();
 		await checkRebalanceLogic();
 	});
 
-	logger.info("CronScheduler", "리밸런싱 체크 Cron 시작 (10분 주기, 장중만)", undefined, true);
+	logger.info(
+		"CronScheduler",
+		"리밸런싱 체크 Cron 시작 (09:00~10:00 1분, 이후 10분 주기, 장중만)",
+		undefined,
+		true
+	);
+	return task;
+}
+
+/**
+ * 미체결 주문 정리 Cron (매일 08:00, 평일)
+ * @description 전날 PENDING 주문을 CANCELLED로 일괄 처리 (장시간 체크 없음)
+ */
+function startCleanupStaleOrdersCron(): ScheduledTask {
+	// 초 분 시 일 월 요일
+	const task = cron.schedule("0 0 8 * * 1-5", async () => {
+		if (!IS_CRON_ENABLED) return;
+
+		await cleanupStaleOrdersLogic();
+	});
+
+	logger.info("CronScheduler", "미체결 주문 정리 Cron 시작 (평일 08:00)", undefined, true);
 	return task;
 }
 
@@ -144,6 +181,7 @@ export function startCronScheduler(): void {
 	startBalanceSyncCron();
 	startFillCheckCron();
 	startRebalanceCheckCron();
+	startCleanupStaleOrdersCron();
 
 	logger.info("CronScheduler", "모든 Cron Jobs 시작 완료", undefined, true);
 }
