@@ -345,16 +345,222 @@ export function SearchStockForm() {
 
 ### Zustand
 
-- `xxx.store.ts`: 스토어 정의
-- persist 미들웨어로 localStorage 저장
-- Client Component에서만 사용
+**위치**: `src/shared/stores/*.store.ts` 또는 `src/features/{기능}/stores/*.store.ts`
+
+**기본 패턴**:
+```typescript
+import { create } from "zustand";
+import { devtools } from "zustand/middleware";
+
+interface MyStore {
+  data: string | null;
+  isLoading: boolean;
+  setData: (data: string) => void;
+  reset: () => void;
+}
+
+export const useMyStore = create<MyStore>()(
+  devtools(
+    (set) => ({
+      data: null,
+      isLoading: false,
+      setData: (data) => set({ data, isLoading: false }),
+      reset: () => set({ data: null, isLoading: false }),
+    }),
+    { name: "MyStore" }
+  )
+);
+```
+
+**사용 예시**:
+```typescript
+// 전체 구독
+const data = useMyStore((state) => state.data);
+
+// 선택적 구독 (성능 최적화)
+const isLoading = useMyStore((state) => state.isLoading);
+
+// 액션 호출
+useMyStore.getState().setData("new value");
+```
+
+**⚠️ 주의**: Client Component에서만 사용 가능
 
 ## 실시간 데이터 (Server-Sent Events)
 
-- Route Handler에서 ReadableStream 생성
-- 키움 WebSocket을 SSE로 변환
-- 클라이언트에서 EventSource로 수신
-- 자동 재연결 로직 구현
+### 서버 측: SSE Route Handler
+
+**위치**: `app/api/sse/*/route.ts`
+
+```typescript
+import { NextResponse } from "next/server";
+
+export async function GET() {
+  const stream = new ReadableStream({
+    start(controller) {
+      // 클라이언트 등록
+      const clientId = crypto.randomUUID();
+      registerClient(clientId, controller);
+
+      // Heartbeat (30초마다)
+      const heartbeat = setInterval(() => {
+        const encoder = new TextEncoder();
+        const message = `event: heartbeat\ndata: {"timestamp": ${Date.now()}}\n\n`;
+        controller.enqueue(encoder.encode(message));
+      }, 30000);
+
+      // Cleanup
+      return () => {
+        clearInterval(heartbeat);
+        unregisterClient(clientId);
+      };
+    },
+  });
+
+  return new NextResponse(stream, {
+    headers: {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      "Connection": "keep-alive",
+    },
+  });
+}
+```
+
+### 클라이언트 측: SSE Provider + Zustand
+
+**1단계: SSE Provider 생성** (`features/{기능}/providers/SSEProvider.tsx`)
+
+```typescript
+"use client";
+
+import { useEffect, useRef } from "react";
+import { useMyStore } from "@/shared/stores/my-store";
+
+export function SSEProvider({ children }) {
+  const eventSourceRef = useRef<EventSource | null>(null);
+
+  useEffect(() => {
+    const eventSource = new EventSource("/api/sse/realtime");
+    eventSourceRef.current = eventSource;
+
+    // 연결 성공
+    eventSource.onopen = () => {
+      console.log("[SSE] 연결 성공");
+      useMyStore.getState().setConnected(true);
+    };
+
+    // 데이터 수신
+    eventSource.addEventListener("data", (event: MessageEvent) => {
+      const data = JSON.parse(event.data);
+      useMyStore.getState().setData(data);
+    });
+
+    // 연결 오류
+    eventSource.onerror = () => {
+      console.error("[SSE] 연결 오류");
+      useMyStore.getState().setConnected(false);
+    };
+
+    // Cleanup
+    return () => {
+      eventSource.close();
+    };
+  }, []);
+
+  return <>{children}</>;
+}
+```
+
+**2단계: Layout/Page에서 감싸기**
+
+```typescript
+import { SSEProvider } from "@/features/my-feature/providers/SSEProvider";
+
+export default function Layout({ children }) {
+  return (
+    <SSEProvider>
+      {children}
+    </SSEProvider>
+  );
+}
+```
+
+**3단계: 컴포넌트에서 Store 구독**
+
+```typescript
+"use client";
+
+import { useMyStore } from "@/shared/stores/my-store";
+
+export function RealtimeDisplay() {
+  const data = useMyStore((state) => state.data);
+  const isConnected = useMyStore((state) => state.isConnected);
+
+  return (
+    <div>
+      <div>연결 상태: {isConnected ? "✅" : "❌"}</div>
+      <div>데이터: {data}</div>
+    </div>
+  );
+}
+```
+
+### Cron 스케줄러
+
+**위치**: `instrumentation.ts` (프로젝트 루트)
+
+**1단계: instrumentation.ts 생성**
+
+```typescript
+export async function register() {
+  if (process.env.NEXT_RUNTIME === "nodejs") {
+    const { startCronScheduler } = await import("./src/shared/lib/cron/scheduler");
+    startCronScheduler();
+  }
+}
+```
+
+**2단계: Cron 스케줄러 구현** (`src/shared/lib/cron/scheduler.ts`)
+
+```typescript
+import cron from "node-cron";
+import { logger } from "@/shared/lib/logger";
+
+const IS_ENABLED = process.env.ENABLE_CRON === "true";
+
+export function startCronScheduler() {
+  if (!IS_ENABLED) {
+    logger.warn("CronScheduler", "Cron이 비활성화되어 있습니다");
+    return;
+  }
+
+  // 1초마다 실행
+  cron.schedule("* * * * * *", async () => {
+    await syncPricesLogic();
+  });
+
+  // 3초마다 실행
+  cron.schedule("*/3 * * * * *", async () => {
+    await syncBalanceLogic();
+  });
+
+  logger.info("CronScheduler", "모든 Cron Jobs 시작 완료");
+}
+```
+
+**3단계: .env 설정**
+
+```bash
+ENABLE_CRON=true  # 장중에만 활성화
+```
+
+**⚠️ 주의사항**:
+- Cron에서 DB 접근 시 반드시 `createAdminClient()` 사용 (cookies 불필요)
+- Rate Limiting 고려 필수
+- 에러 핸들링 및 로깅 필수
+
+**예시**: Grid Trader의 가격/잔고 동기화 (PRD 참조)
 
 ## 스타일링
 

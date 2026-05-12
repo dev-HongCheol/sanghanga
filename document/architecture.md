@@ -110,11 +110,78 @@ app/api/
 
 ## 실시간 데이터 (Server-Sent Events)
 
-키움 WebSocket → Next.js SSE → 브라우저
+### 개요
 
-- Route Handler에서 키움 WebSocket 연결
-- ReadableStream으로 SSE 변환
-- 클라이언트에서 EventSource로 수신
+서버에서 클라이언트로 실시간 데이터를 푸시하는 단방향 통신 방식.
+
+**아키텍처 흐름**:
+```
+[서버] Cron/Event → 메모리 캐시 업데이트 → SSE 브로드캐스트
+                                                      ↓
+[클라이언트] EventSource 구독 → Zustand Store 업데이트 → UI 리렌더링
+```
+
+### 구현 패턴
+
+**서버 측** (`app/api/sse/*/route.ts`):
+- ReadableStream으로 SSE 스트림 생성
+- 연결된 클라이언트 관리 (Map 기반)
+- 데이터 변경 시 브로드캐스트
+
+**클라이언트 측**:
+- EventSource로 SSE 구독
+- Zustand Store에 데이터 저장
+- 각 컴포넌트는 Store 구독 (자동 리렌더링)
+
+**예시**: Grid Trader의 실시간 가격/잔고 업데이트 (PRD 참조)
+
+## Cron 스케줄러
+
+### 개요
+
+Next.js Instrumentation Hook을 통해 서버 시작 시 자동 실행되는 주기적 작업.
+
+**위치**: `instrumentation.ts` (프로젝트 루트)
+
+### 사용 시나리오
+
+- 주기적 데이터 동기화 (가격, 잔고 등)
+- 배치 작업 (일일 리포트, 정산 등)
+- 헬스체크 및 모니터링
+
+### 구현 예시
+
+```typescript
+// instrumentation.ts
+export async function register() {
+  if (process.env.NEXT_RUNTIME === "nodejs") {
+    const { startCronScheduler } = await import("./src/shared/lib/cron/scheduler");
+    startCronScheduler();
+  }
+}
+```
+
+**⚠️ 주의사항**:
+- 환경변수로 활성화/비활성화 제어 권장
+- Rate Limiting 고려 필수
+- 에러 핸들링 및 로깅 필수
+
+## 메모리 캐시
+
+### 개요
+
+휘발성 데이터를 서버 메모리에 캐싱하여 반복적인 API 호출 방지.
+
+**사용 사례**:
+- 실시간 가격 (최신값만 필요, 영속성 불필요)
+- 계좌 잔고 (자주 변경, 빠른 조회 필요)
+- 세션 데이터
+
+**구현 방식**: `Map<string, T>` 기반
+
+**위치**: `src/shared/lib/cache/`
+
+**예시**: Grid Trader의 price-cache, balance-cache
 
 ## Database (Supabase)
 

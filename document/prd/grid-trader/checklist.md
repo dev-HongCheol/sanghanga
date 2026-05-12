@@ -47,9 +47,9 @@
 - [ ] 08:00 토큰 갱신
 - [ ] 08:30 사전 세팅
 - [ ] 08:50 초기 그리드 배치
-- [ ] 09:00~15:30 체결 Polling
+- [x] 09:00~15:30 체결 Polling (v1.5 - 2초 주기 자동 실행)
 - [ ] 15:30 마감 처리
-- [ ] 매시간 리밸런싱 체크
+- [x] 리밸런싱 체크 (v1.5 - 10분 주기 자동 실행, 그리드 이탈 감지)
 
 ### UI (features/grid-trader/ui/)
 - [x] `StrategyList.tsx` — 전략 목록
@@ -65,7 +65,42 @@
 - [x] `app/trading-system/grid-trader/page.tsx` — 전략 목록 페이지
 - [x] `app/trading-system/grid-trader/[strategyId]/page.tsx` — 전략 상세 페이지
 - [x] 라우트 등록 (`shared/config/routes.ts`)
-- [x] 실시간 업데이트 (PollingRefresher 컴포넌트)
+- [x] ~~실시간 업데이트 (PollingRefresher 컴포넌트)~~ → v1.4에서 SSE로 대체
+
+## Phase 1.5: 실시간 데이터 동기화 개선 (v1.4)
+
+### 서버 인프라
+- [x] `shared/lib/cache/price-cache.ts` — 현재가 메모리 캐시 (Map)
+- [x] `shared/lib/cache/balance-cache.ts` — 잔고 메모리 캐시 (Map)
+- [x] `shared/lib/sse/sse-manager.ts` — SSE 연결 관리 및 브로드캐스트
+- [x] `shared/lib/cron/scheduler.ts` — Cron 스케줄러 (Next.js Instrumentation, 장시간 제어)
+- [x] `shared/lib/time/market-hours.ts` — 장시간 체크 유틸리티 (평일 09:00~15:30)
+- [x] `instrumentation.ts` — Next.js 서버 시작 시 Cron 자동 실행
+
+### Cron Jobs (실시간 동기화)
+- [x] `app/api/cron/sync-prices/route.ts` — 가격 동기화 (1초 주기, 장중만, ka10001)
+- [x] `app/api/cron/sync-balance/route.ts` — 잔고 동기화 (3초 주기, 항상, kt00018)
+- [x] `features/grid-trader/lib/cron/checkFills.ts` — 체결 감지 (2초 주기, 장중만)
+- [x] `features/grid-trader/lib/cron/checkRebalance.ts` — 자동 리밸런싱 체크 (10분 주기, 장중만)
+
+### SSE Endpoints
+- [x] `app/api/sse/realtime/route.ts` — SSE 스트림 (가격/잔고 통합)
+
+### 클라이언트 상태 관리
+- [x] `shared/stores/price-store.ts` — 현재가 전역 상태 (Zustand)
+- [x] `shared/stores/balance-store.ts` — 잔고 전역 상태 (Zustand)
+- [x] `features/grid-trader/providers/SSEProvider.tsx` — SSE 연결 Provider (단일 연결 → Zustand 업데이트)
+
+### 클라이언트 컴포넌트
+- [x] `features/grid-trader/ui/RealtimePriceDisplay.tsx` — 실시간 현재가 표시 (Zustand 구독)
+- [x] `features/grid-trader/ui/RealtimeBalanceDisplay.tsx` — 실시간 잔고 표시 (Zustand 구독)
+- [x] `features/grid-trader/ui/RealtimeActiveOrdersTable.tsx` — 실시간 주문 테이블 (Zustand 구독)
+- [x] ~~`features/grid-trader/ui/PollingRefresher.tsx`~~ — 제거 (SSE로 대체)
+
+### 설정
+- [x] `next.config.ts` — instrumentationHook 활성화
+- [x] `.env.example` — ENABLE_CRON 환경변수 추가
+- [x] `package.json` — node-cron 설치
 
 ## Phase 2: 알림 및 모니터링 (v2.0)
 
