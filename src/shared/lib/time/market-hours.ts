@@ -92,34 +92,12 @@ export function checkMarketHours(): MarketHours {
 }
 
 /**
- * 장시간 캐시 (1분마다 갱신)
- */
-let marketOpenCache: { value: boolean; expiresAt: number } | null = null;
-const CACHE_TTL_MS = 60_000; // 1분
-
-/**
  * 장시간 체크 (간단 버전 - boolean만 반환)
- * @description 1분마다 한 번만 체크하고 나머지는 캐시 값 반환 (CPU 절약)
+ * @description 순수 날짜 산술이므로 캐시 없이 매번 체크 (경계 시각 정확도 보장)
  * @returns 장시간 여부
  */
 export function isMarketOpen(): boolean {
-	const now = Date.now();
-
-	// 캐시가 유효하면 캐시 값 반환
-	if (marketOpenCache && now < marketOpenCache.expiresAt) {
-		return marketOpenCache.value;
-	}
-
-	// 캐시 만료 → 새로 체크
-	const { isMarketOpen } = checkMarketHours();
-
-	// 캐시 업데이트
-	marketOpenCache = {
-		value: isMarketOpen,
-		expiresAt: now + CACHE_TTL_MS,
-	};
-
-	return isMarketOpen;
+	return checkMarketHours().isMarketOpen;
 }
 
 /**
