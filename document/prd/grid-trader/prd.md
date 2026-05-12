@@ -7,7 +7,7 @@
 | **작성일** | 2026-05-01 |
 | **작성자** | User |
 | **상태** | 🚧 구현중 |
-| **버전** | v1.5.1 |
+| **버전** | v1.5.6 |
 | **우선순위** | Medium |
 | **체크리스트** | [checklist.md](./checklist.md) |
 | **기술 문서** | [호가 단위 조정 가이드](./tick-size-guide.md) |
@@ -79,7 +79,8 @@
 | 가격 동기화 | ka10001 (주식기본정보) | 1초 | **장중만** (평일 09:00~18:00) | 활성 전략의 종목 현재가 조회 → 메모리 캐시 + SSE push |
 | 잔고 동기화 | kt00018 (계좌평가잔고내역) | 3초 | 항상 (ENABLE_CRON=true) | 계좌 잔고/보유 수량 조회 → 메모리 캐시 + SSE push |
 | 체결 감지 | ka10075/ka10076 | 2초 | **장중만** (평일 09:00~18:00) | 체결 이벤트 감지 → DB 저장 + 카운터 주문 생성 |
-| 리밸런싱 체크 | - | 10분 | **장중만** (평일 09:00~18:00) | 그리드 이탈 감지 → 자동 리밸런싱 실행 |
+| 리밸런싱 체크 | - | **09:00~10:00 KST 1분 / 이후 10분** | **장중만** (평일 09:00~18:00) | 그리드 이탈 감지 → 자동 리밸런싱 실행 |
+| 미체결 주문 정리 | - | 매일 08:00 (평일) | 항상 (장시간 무관) | 전날 PENDING 주문 → CANCELLED 일괄 처리 |
 
 **장시간 제어** (로컬 시간 기준):
 - 평일 09:00~18:00 (정규장 + 시간외 거래)
@@ -87,12 +88,28 @@
 - 시간외 종가: 15:40~16:00
 - 시간외 단일가: 16:00~18:00
 - 잔고 동기화는 장시간 체크 없이 항상 실행
-- 공휴일은 현재 미지원 (요일만 체크)
+- 공휴일은 현재 미지원 (요일만 체크) → 향후 개선 참조
 
 **클라이언트 통신**:
 - ~~PollingRefresher (제거)~~: 1초마다 전체 페이지 리패칭 (비효율)
 - **SSE 구독** (신규): 서버가 데이터 변경 시 즉시 push (폴링 불필요)
 - **Zustand Store**: SSEProvider가 단일 연결 생성 → 전역 Store 업데이트 → 각 컴포넌트 구독
+
+**SSE 이벤트 현황**:
+
+| 이벤트 | 브로드캐스트 함수 | SSEProvider 리스너 | 상태 |
+|:-------|:-----------------|:------------------|:-----|
+| `price` | `broadcastPrice` | ✅ 있음 | 정상 |
+| `balance` | `broadcastBalance` | ✅ 있음 | 정상 |
+| `heartbeat` | `sendHeartbeat` | ✅ 있음 | 정상 |
+| `orders` | `broadcastOrders` | ❌ 없음 | 미연결 |
+| `fill` | `broadcastFillEvent` | ❌ 없음 | 미연결 |
+
+**주문/체결 데이터 갱신 현황 (미완성)**:
+- 상세 페이지 최초 진입 시 Server Component에서 DB 조회 후 props로 전달
+- 이후 주문 변경(배치/체결)은 `router.refresh()` 수동 호출로만 갱신
+- Cron이 체결 감지 후 카운터 주문 생성해도 UI 자동 갱신 안 됨
+- `router.refresh()` 문제점: 완료 시점 알 수 없음, 테이블 레이아웃 점프, 로딩 피드백 없음
 
 **키움 API 호출량** (활성 그리드 N개):
 - 초당 N + 0.83회 (가격 N회 + 잔고 0.33회 + 체결 0.5회)
@@ -100,7 +117,11 @@
 
 ### 4. 리밸런싱
 
-**트리거**: 10분 주기 자동 체크 / 가격 그리드 범위 이탈 / 수동 버튼
+**트리거**: 자동 체크 (시간대별 주기 상이) / 가격 그리드 범위 이탈 / 수동 버튼
+
+**자동 체크 주기**:
+- **09:00~10:00 KST**: 1분 간격 (장 초반 급변동 대응)
+- **10:00~18:00 KST**: 10분 간격
 
 **그리드 이탈 조건** (v1.5):
 - 현재가 > 최상단 그리드 가격 (모든 매도 주문 위로)
@@ -111,9 +132,9 @@
 ### 5. 서버 재시작 동기화
 
 **자동 복구 메커니즘** (v1.5):
-- 10분마다 실행되는 리밸런싱 체크가 자동으로 서버 재시작을 감지
+- 리밸런싱 체크 Cron이 자동으로 서버 재시작을 감지
 - **활성 전략인데 미체결 주문이 없으면** → 자동으로 그리드 배치 실행
-- 서버 장애로 9시에 주문이 안 걸렸더라도, 재구동 후 10분 이내에 자동 배치됨
+- 서버 장애로 9시에 주문이 안 걸렸더라도, 재구동 후 최대 1분(장 초반) / 10분(이후) 이내에 자동 배치됨
 
 **동작 시나리오**:
 1. 09:00 시스템 오류 발생 (그리드 배치 실패)
@@ -203,6 +224,54 @@ Zustand Store (price-store, balance-store)
 pnpm dlx shadcn@latest add form input button card table badge switch separator alert dialog select
 ```
 
+## 🔮 향후 개선 (Optional)
+
+### 공휴일 포함 장시간 체크
+
+**현황**: `shared/lib/time/market-hours.ts`의 `isMarketOpen()`은 요일(평일/주말)만 판단하며 공휴일을 체크하지 못함.
+
+**조사 결과**: 키움 REST API에는 장 개장 여부 또는 공휴일을 직접 반환하는 전용 API가 없음. 전체 명세 확인 완료.
+
+**권장 구현 방법: 공공데이터포털 한국천문연구원 특일 정보 API**
+
+| 항목 | 내용 |
+|:-----|:-----|
+| URL | `https://apis.data.go.kr/B090041/openapi/service/SpcdeInfoService/getRestDeInfo` |
+| 인증 | 공공데이터포털 API 키 (무료, `data.go.kr` 회원가입 후 발급) |
+| 호출 시점 | 서버 기동 시 또는 연초 1회 → 메모리/DB 캐싱 |
+| 파라미터 | `solYear=2025&numOfRows=30&_type=json` |
+| 반환 | 설날, 추석, 광복절 등 법정공휴일 날짜 목록 |
+
+**구현 위치**: `shared/lib/time/market-hours.ts`의 `isWithinMarketHours(date)` 함수에 공휴일 날짜 Set 체크 추가
+
+```typescript
+// 대략적인 구현 방향
+const HOLIDAYS = new Set<string>(); // "20250101", "20250128" 형식
+
+function isWithinMarketHours(date: Date): boolean {
+  const ymd = formatYYYYMMDD(date); // "20250101"
+  if (HOLIDAYS.has(ymd)) return false; // 공휴일 제외
+  // 기존 요일 + 시간 체크 ...
+}
+```
+
+**환경변수 추가 필요**: `DATA_GO_KR_API_KEY` (`.env.local`)
+
+### 주문/체결 데이터 실시간 갱신 (SSE 확장)
+
+**현황**: `sse-manager.ts`에 `broadcastOrders`, `broadcastFillEvent` 함수가 선언되어 있으나 Cron 호출과 SSEProvider 리스너 모두 미연결 상태.
+
+**구현 방법**:
+
+1. Cron `checkFillsLogic`에서 체결 감지 후 `broadcastOrders(strategyId, updatedOrders)` 호출
+2. `SSEProvider`에 `orders` 이벤트 리스너 추가 → Zustand `order-store` 업데이트
+3. `RealtimeActiveOrdersTable`이 props 대신 Zustand store 구독
+4. 상세 페이지 SSR props는 초기값으로만 사용 → store 초기화에 활용
+
+**기대 효과**: `router.refresh()` 제거 → 깜빡임 없는 부드러운 테이블 갱신, 체결 즉시 자동 반영
+
+---
+
 ## 🚨 리스크 및 주의사항
 
 - **Core 물량 보호**: `minHoldingLimit` 이하 매도 금지는 코드 레벨에서 강제
@@ -223,3 +292,8 @@ pnpm dlx shadcn@latest add form input button card table badge switch separator a
 | v1.4 | 2026-05-11 | 실시간 데이터 동기화 개선 (클라이언트 폴링 제거, Cron + SSE 도입) |
 | v1.5 | 2026-05-12 | 체결 감지/자동 리밸런싱 Cron 추가, 서버 재시작 시 자동 그리드 배치 메커니즘 구현 |
 | v1.5.1 | 2026-05-12 | 장시간 제어 확장 (15:30 → 18:00, 시간외 거래 포함), 폴링 로그 제어 적용 |
+| v1.5.2 | 2026-05-12 | 공휴일 장시간 체크 향후 개선 사항 문서화 (공공데이터포털 API 활용 방안) |
+| v1.5.3 | 2026-05-12 | SSE 이벤트 현황 정리, 주문/체결 실시간 갱신 미완성 상태 및 개선 방향 문서화 |
+| v1.5.4 | 2026-05-12 | 미체결 주문 정리 Cron 추가 (매일 08:00 평일, 전날 PENDING → CANCELLED) |
+| v1.5.5 | 2026-05-12 | 체결 감지 버그 수정: Cron 컨텍스트에서 cookies() 호출 오류로 sh_fill_events 미기록, ord_no 앞자리 0 패딩 매칭 오류 |
+| v1.5.6 | 2026-05-12 | 리밸런싱 체크 주기 개선: 09:00~10:00 KST 1분 간격 (장 초반 급변동 대응), 이후 10분 간격 유지 |

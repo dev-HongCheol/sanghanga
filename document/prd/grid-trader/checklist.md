@@ -82,6 +82,7 @@
 - [x] `app/api/cron/sync-balance/route.ts` — 잔고 동기화 (3초 주기, 항상, kt00018)
 - [x] `features/grid-trader/lib/cron/checkFills.ts` — 체결 감지 (2초 주기, 장중만)
 - [x] `features/grid-trader/lib/cron/checkRebalance.ts` — 자동 리밸런싱 체크 (10분 주기, 장중만)
+- [x] `features/grid-trader/lib/cron/cleanupStaleOrders.ts` — 미체결 주문 정리 (평일 08:00, 전날 PENDING → CANCELLED)
 
 ### SSE Endpoints
 - [x] `app/api/sse/realtime/route.ts` — SSE 스트림 (가격/잔고 통합)
@@ -101,6 +102,25 @@
 - [x] `next.config.ts` — instrumentationHook 활성화
 - [x] `.env.example` — ENABLE_CRON 환경변수 추가
 - [x] `package.json` — node-cron 설치
+
+## Phase 1.6: 주문/체결 실시간 갱신 (SSE 확장)
+
+> 현황: `sse-manager.ts`에 `broadcastOrders`, `broadcastFillEvent` 선언되어 있으나 Cron 호출 및 SSEProvider 리스너 모두 미연결
+> 문제: 주문 변경 시 `router.refresh()` 수동 호출에 의존 → 깜빡임, 로딩 피드백 없음, Cron 체결 감지 후 UI 자동 갱신 안 됨
+
+### Zustand Store
+- [ ] `shared/stores/order-store.ts` — 주문 목록 전역 상태 신규 생성 (strategyId별 orders 관리)
+
+### SSE 연결
+- [ ] `features/grid-trader/lib/cron/checkFills.ts` — 체결 감지 후 `broadcastOrders(strategyId, orders)` 호출
+- [ ] `features/grid-trader/providers/SSEProvider.tsx` — `orders` 이벤트 리스너 추가 → Zustand order-store 업데이트
+
+### 컴포넌트 수정
+- [ ] `features/grid-trader/ui/RealtimeActiveOrdersTable.tsx` — props 대신 Zustand order-store 구독으로 전환
+- [ ] `app/.../[strategyId]/page.tsx` — SSR props를 store 초기값으로 주입하는 방식으로 변경
+
+### 정리
+- [ ] `StrategyCard.tsx`, `RebalanceButton.tsx` 등 `router.refresh()` 호출 제거
 
 ## Phase 2: 알림 및 모니터링 (v2.0)
 
