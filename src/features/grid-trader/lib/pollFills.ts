@@ -15,7 +15,7 @@ import { handleFillEvent } from "./handleFillEvent";
  */
 async function pollFillsForStrategy(strategy: GridStrategy): Promise<number> {
 	const [dbPendingOrders, fillsResult, apiPendingResult] = await Promise.all([
-		getPendingOrders(strategy.id),
+		getPendingOrders(strategy.id, true),
 		getFilledOrdersAction(strategy.stock_code),
 		getPendingOrdersAction(strategy.stock_code),
 	]);
@@ -48,7 +48,7 @@ async function pollFillsForStrategy(strategy: GridStrategy): Promise<number> {
 		});
 
 		try {
-			await handleFillEvent(dbOrder, strategy, fill.filledPrice, fill.orderTime);
+			await handleFillEvent(dbOrder, strategy, fill.filledPrice, fill.orderTime, true);
 			processed++;
 		} catch (err) {
 			logger.error("PollFills", "체결 이벤트 처리 실패", {
@@ -76,7 +76,7 @@ async function pollFillsForStrategy(strategy: GridStrategy): Promise<number> {
 			});
 
 			try {
-				await cancelOrders(cancelledOrderIds);
+				await cancelOrders(cancelledOrderIds, true);
 				logger.info("PollFills", "취소된 주문 DB 동기화 완료", {
 					count: cancelledOrderIds.length,
 				});
@@ -98,7 +98,7 @@ async function pollFillsForStrategy(strategy: GridStrategy): Promise<number> {
 /**
  * 활성 전략 전체의 체결을 1회 폴링한다
  *
- * 09:00~15:30 사이 1초 간격으로 호출됨 (Cron Job에서 관리)
+ * 09:00~18:00 사이 2초 간격으로 호출됨 (Cron Job에서 관리)
  *
  * @returns 처리된 총 체결 수
  */
@@ -107,7 +107,8 @@ export async function pollFills(): Promise<number> {
 
 	let strategies: GridStrategy[];
 	try {
-		strategies = await getActiveStrategies();
+		// Cron 환경이므로 Admin 클라이언트 사용 (cookies() 에러 방지)
+		strategies = await getActiveStrategies(true);
 	} catch (err) {
 		logger.error("PollFills", "활성 전략 조회 실패", {
 			error: err instanceof Error ? err.message : String(err),

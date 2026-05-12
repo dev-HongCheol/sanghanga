@@ -17,12 +17,14 @@ import { matchStockCode } from "./matchStockCode";
  * @param strategy - 해당 그리드 전략
  * @param fillPrice - 실제 체결가 (원)
  * @param fillTime - 체결 시각 (ISO 8601)
+ * @param useAdminClient - Admin Client 사용 여부 (Cron 등 백그라운드 작업용, 기본값: false)
  */
 export async function handleFillEvent(
 	filledOrder: GridOrder,
 	strategy: GridStrategy,
 	fillPrice: number,
-	fillTime: string
+	fillTime: string,
+	useAdminClient = false
 ): Promise<void> {
 	logger.info("HandleFillEvent", "체결 이벤트 처리 시작", {
 		orderId: filledOrder.order_id,
@@ -52,9 +54,9 @@ export async function handleFillEvent(
 
 	// 3. 카운터 주문 생성
 	if (filledOrder.order_type === "BUY") {
-		await handleBuyFill(filledOrder, strategy, fillPrice);
+		await handleBuyFill(filledOrder, strategy, fillPrice, useAdminClient);
 	} else {
-		await handleSellFill(filledOrder, strategy, fillPrice);
+		await handleSellFill(filledOrder, strategy, fillPrice, useAdminClient);
 	}
 }
 
@@ -64,7 +66,8 @@ export async function handleFillEvent(
 async function handleBuyFill(
 	filledOrder: GridOrder,
 	strategy: GridStrategy,
-	fillPrice: number
+	fillPrice: number,
+	useAdminClient: boolean
 ): Promise<void> {
 	// 호가 단위 조정 (매도는 올림으로 유리하게)
 	const sellPrice = adjustToTickSize(fillPrice + strategy.grid_gap, "up");
@@ -117,7 +120,7 @@ async function handleBuyFill(
 			quantity: strategy.quantity_per_grid,
 			status: "PENDING",
 			filled_at: null,
-		});
+		}, useAdminClient);
 		logger.info("HandleFillEvent", "카운터 매도 주문 완료", {
 			sellPrice,
 			orderNo: result.result.orderNo,
@@ -133,7 +136,8 @@ async function handleBuyFill(
 async function handleSellFill(
 	filledOrder: GridOrder,
 	strategy: GridStrategy,
-	fillPrice: number
+	fillPrice: number,
+	useAdminClient: boolean
 ): Promise<void> {
 	// 호가 단위 조정 (매수는 내림으로 유리하게)
 	const buyPrice = adjustToTickSize(fillPrice - strategy.grid_gap, "down");
@@ -175,7 +179,7 @@ async function handleSellFill(
 			quantity: strategy.quantity_per_grid,
 			status: "PENDING",
 			filled_at: null,
-		});
+		}, useAdminClient);
 		logger.info("HandleFillEvent", "카운터 매수 주문 완료", {
 			buyPrice,
 			orderNo: result.result.orderNo,

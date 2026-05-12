@@ -25,16 +25,17 @@ export interface RebalanceResult {
  * 트리거: 1시간 주기 / 가격 그리드 이탈 / 수동 버튼
  *
  * @param strategy - 리밸런싱할 그리드 전략
+ * @param useAdminClient - Admin Client 사용 여부 (Cron 등 백그라운드 작업용, 기본값: false)
  * @returns 리밸런싱 결과
  */
-export async function rebalanceGrid(strategy: GridStrategy): Promise<RebalanceResult> {
+export async function rebalanceGrid(strategy: GridStrategy, useAdminClient = false): Promise<RebalanceResult> {
 	logger.info("RebalanceGrid", "리밸런싱 시작", {
 		strategyId: strategy.id,
 		stockCode: strategy.stock_code,
 	});
 
 	// 1. 미체결 주문 목록 조회
-	const pendingOrders = await getPendingOrders(strategy.id);
+	const pendingOrders = await getPendingOrders(strategy.id, useAdminClient);
 	logger.info("RebalanceGrid", "미체결 주문 조회 완료", { count: pendingOrders.length });
 
 	// 2. 각 주문 API 취소 (실패해도 계속 진행)
@@ -55,13 +56,13 @@ export async function rebalanceGrid(strategy: GridStrategy): Promise<RebalanceRe
 
 	// 3. DB에서 일괄 취소 처리
 	if (cancelledOrderIds.length > 0) {
-		await cancelOrders(cancelledOrderIds);
+		await cancelOrders(cancelledOrderIds, useAdminClient);
 	}
 
 	logger.info("RebalanceGrid", "미체결 주문 취소 완료", { cancelled: cancelledOrderIds.length });
 
 	// 4. 신규 그리드 배치
-	const deployResult = await deployGrid(strategy);
+	const deployResult = await deployGrid(strategy, useAdminClient);
 
 	logger.info("RebalanceGrid", "리밸런싱 완료", {
 		strategyId: strategy.id,

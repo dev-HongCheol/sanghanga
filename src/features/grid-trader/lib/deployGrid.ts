@@ -37,9 +37,10 @@ export interface DeployGridResult {
  * - 주문 간 500ms 간격 적용
  *
  * @param strategy - 배치할 그리드 전략
+ * @param useAdminClient - Admin Client 사용 여부 (Cron 등 백그라운드 작업용, 기본값: false)
  * @returns 배치 결과 (성공/실패 주문 수)
  */
-export async function deployGrid(strategy: GridStrategy): Promise<DeployGridResult> {
+export async function deployGrid(strategy: GridStrategy, useAdminClient = false): Promise<DeployGridResult> {
 	logger.info("DeployGrid", "그리드 배치 시작", {
 		strategyId: strategy.id,
 		stockCode: strategy.stock_code,
@@ -108,7 +109,7 @@ export async function deployGrid(strategy: GridStrategy): Promise<DeployGridResu
 				quantity: strategy.quantity_per_grid,
 				status: "PENDING",
 				filled_at: null,
-			});
+			}, useAdminClient);
 			availableDeposit -= requiredDeposit;
 			placed++;
 		} else {
@@ -159,7 +160,7 @@ export async function deployGrid(strategy: GridStrategy): Promise<DeployGridResu
 				quantity: strategy.quantity_per_grid,
 				status: "PENDING",
 				filled_at: null,
-			});
+			}, useAdminClient);
 			sellableQty -= strategy.quantity_per_grid;
 			placed++;
 		} else {

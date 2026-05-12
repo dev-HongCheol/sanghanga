@@ -3,7 +3,7 @@
  * @description Supabase를 통한 그리드 트레이딩 전략 CRUD
  */
 
-import { createServerClient } from "@/shared/lib/supabase/server";
+import { createServerClient, getSupabaseClient } from "@/shared/lib/supabase/server";
 import type {
 	FillEvent,
 	FillEventInsert,
@@ -124,11 +124,12 @@ export async function getAllStrategies(): Promise<GridStrategy[]> {
 
 /**
  * 활성 전략 목록 조회
+ * @param useAdminClient - Admin Client 사용 여부 (Cron 등 백그라운드 작업용, 기본값: false)
  * @returns 활성 전략 목록
  * @throws {Error} DB 오류 시
  */
-export async function getActiveStrategies(): Promise<GridStrategy[]> {
-	const supabase = await createServerClient();
+export async function getActiveStrategies(useAdminClient = false): Promise<GridStrategy[]> {
+	const supabase = await getSupabaseClient(useAdminClient);
 
 	const { data, error } = await supabase
 		.from("sh_grid_strategies")
@@ -174,11 +175,12 @@ export async function toggleStrategyActive(id: string, isActive: boolean): Promi
 /**
  * 그리드 주문 생성
  * @param data - 주문 생성 데이터
+ * @param useAdminClient - Admin Client 사용 여부 (Cron 등 백그라운드 작업용, 기본값: false)
  * @returns 생성된 주문
  * @throws {Error} DB 오류 시
  */
-export async function createOrder(data: GridOrderInsert): Promise<GridOrder> {
-	const supabase = await createServerClient();
+export async function createOrder(data: GridOrderInsert, useAdminClient = false): Promise<GridOrder> {
+	const supabase = await getSupabaseClient(useAdminClient);
 
 	const { data: order, error } = await supabase
 		.from("sh_grid_orders")
@@ -258,11 +260,15 @@ export async function getOrdersByStrategy(
 /**
  * 미체결 주문 목록 조회
  * @param strategyId - 전략 ID (옵션)
+ * @param useAdminClient - Admin Client 사용 여부 (Cron 등 백그라운드 작업용, 기본값: false)
  * @returns 미체결 주문 목록
  * @throws {Error} DB 오류 시
  */
-export async function getPendingOrders(strategyId?: string): Promise<GridOrder[]> {
-	const supabase = await createServerClient();
+export async function getPendingOrders(
+	strategyId?: string,
+	useAdminClient = false
+): Promise<GridOrder[]> {
+	const supabase = await getSupabaseClient(useAdminClient);
 
 	let query = supabase.from("sh_grid_orders").select().eq("status", "PENDING");
 
@@ -292,10 +298,11 @@ export async function cancelOrder(orderId: string): Promise<GridOrder> {
 /**
  * 여러 주문 일괄 취소
  * @param orderIds - 취소할 주문번호 배열
+ * @param useAdminClient - Admin Client 사용 여부 (Cron 등 백그라운드 작업용, 기본값: false)
  * @throws {Error} DB 오류 시
  */
-export async function cancelOrders(orderIds: string[]): Promise<void> {
-	const supabase = await createServerClient();
+export async function cancelOrders(orderIds: string[], useAdminClient = false): Promise<void> {
+	const supabase = await getSupabaseClient(useAdminClient);
 
 	const { error } = await supabase
 		.from("sh_grid_orders")
