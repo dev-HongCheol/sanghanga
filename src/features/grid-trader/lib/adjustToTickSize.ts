@@ -14,6 +14,20 @@ const TICK_SIZE_RULES = [
 ] as const;
 
 /**
+ * 가격대별 호가 단위 반환
+ *
+ * @param price - 조회할 가격 (원)
+ * @returns 해당 가격대의 호가 단위
+ */
+export function getTickSize(price: number): number {
+	const rule = TICK_SIZE_RULES.find((r) => price < r.max);
+	if (!rule) {
+		throw new Error(`Invalid price: ${price}`);
+	}
+	return rule.tick;
+}
+
+/**
  * 주어진 가격을 호가 단위에 맞춰 조정한다
  *
  * 키움증권 API는 호가 단위에 맞지 않는 가격을 거부하므로,

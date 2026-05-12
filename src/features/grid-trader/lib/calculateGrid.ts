@@ -1,4 +1,4 @@
-import { adjustToTickSize } from "./adjustToTickSize";
+import { adjustToTickSize, getTickSize } from "./adjustToTickSize";
 
 /**
  * 그리드 가격 배열 계산 결과
@@ -14,19 +14,6 @@ export interface GridPrices {
 	 * e.g. [30500, 31000, 31500]
 	 */
 	sellPrices: number[];
-}
-
-/**
- * 가격대별 호가 단위 반환
- */
-function getTickSize(price: number): number {
-	if (price < 1000) return 1;
-	if (price < 5000) return 5;
-	if (price < 10000) return 10;
-	if (price < 50000) return 50;
-	if (price < 100000) return 100;
-	if (price < 500000) return 500;
-	return 1000;
 }
 
 /**
