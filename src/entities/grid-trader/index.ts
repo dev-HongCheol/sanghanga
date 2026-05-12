@@ -41,6 +41,7 @@ export {
 	getPendingOrders,
 	cancelOrder,
 	cancelOrders,
+	cancelStalePendingOrders,
 	createFillEvent,
 	getFillEventsByStrategy,
 	getFillEventsByDateRange,

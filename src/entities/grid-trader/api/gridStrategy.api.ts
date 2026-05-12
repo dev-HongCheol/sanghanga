@@ -200,15 +200,17 @@ export async function createOrder(data: GridOrderInsert, useAdminClient = false)
  * @param orderId - 키움 API 주문번호
  * @param status - 새로운 상태
  * @param filledAt - 체결 시각 (옵션)
+ * @param useAdminClient - Admin Client 사용 여부 (Cron 등 백그라운드 작업용, 기본값: false)
  * @returns 수정된 주문
  * @throws {Error} DB 오류 시
  */
 export async function updateOrderStatus(
 	orderId: string,
 	status: OrderStatus,
-	filledAt?: string
+	filledAt?: string,
+	useAdminClient = false
 ): Promise<GridOrder> {
-	const supabase = await createServerClient();
+	const supabase = await getSupabaseClient(useAdminClient);
 
 	const updateData: Partial<GridOrder> = { status };
 	if (filledAt) {
@@ -296,6 +298,37 @@ export async function cancelOrder(orderId: string): Promise<GridOrder> {
 }
 
 /**
+ * 전날 미체결 주문 일괄 취소 (장 마감 후 거래소 자동 취소 동기화)
+ *
+ * 한국 주식시장은 지정가 주문이 장 마감 시 거래소에서 자동 취소된다.
+ * DB의 PENDING 상태가 이를 반영하지 못하므로, 매일 08:00 Cron으로 정리한다.
+ *
+ * @param useAdminClient - Admin Client 사용 여부 (Cron 등 백그라운드 작업용, 기본값: false)
+ * @returns 취소 처리된 주문 수
+ * @throws {Error} DB 오류 시
+ */
+export async function cancelStalePendingOrders(useAdminClient = false): Promise<number> {
+	const supabase = await getSupabaseClient(useAdminClient);
+
+	// 오늘 00:00 KST 기준 — 그 이전에 생성된 PENDING 주문이 대상
+	const todayKST = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Seoul" }));
+	todayKST.setHours(0, 0, 0, 0);
+
+	const { data, error } = await supabase
+		.from("sh_grid_orders")
+		.update({ status: "CANCELLED" })
+		.eq("status", "PENDING")
+		.lt("created_at", todayKST.toISOString())
+		.select("id");
+
+	if (error) {
+		throw new Error(`미체결 주문 정리 실패: ${error.message}`);
+	}
+
+	return data?.length ?? 0;
+}
+
+/**
  * 여러 주문 일괄 취소
  * @param orderIds - 취소할 주문번호 배열
  * @param useAdminClient - Admin Client 사용 여부 (Cron 등 백그라운드 작업용, 기본값: false)
@@ -321,11 +354,12 @@ export async function cancelOrders(orderIds: string[], useAdminClient = false): 
 /**
  * 체결 이벤트 생성
  * @param data - 체결 이벤트 데이터
+ * @param useAdminClient - Admin Client 사용 여부 (Cron 등 백그라운드 작업용, 기본값: false)
  * @returns 생성된 체결 이벤트
  * @throws {Error} DB 오류 시
  */
-export async function createFillEvent(data: FillEventInsert): Promise<FillEvent> {
-	const supabase = await createServerClient();
+export async function createFillEvent(data: FillEventInsert, useAdminClient = false): Promise<FillEvent> {
+	const supabase = await getSupabaseClient(useAdminClient);
 
 	const { data: fillEvent, error } = await supabase
 		.from("sh_fill_events")

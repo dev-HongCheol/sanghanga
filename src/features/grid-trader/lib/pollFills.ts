@@ -32,13 +32,15 @@ async function pollFillsForStrategy(strategy: GridStrategy): Promise<number> {
 	if (dbPendingOrders.length === 0) return 0;
 
 	// DB 미체결 주문번호 → order 매핑
-	const dbPendingMap = new Map(dbPendingOrders.map((o) => [o.order_id, o]));
+	// ord_no는 "0000037" 처럼 앞자리 0 패딩 형식으로 올 수 있으므로 양쪽 모두 정규화
+	const normalizeOrderNo = (no: string) => no.replace(/^0+/, "") || "0";
+	const dbPendingMap = new Map(dbPendingOrders.map((o) => [normalizeOrderNo(o.order_id), o]));
 
 	let processed = 0;
 
 	// 1. 체결된 주문 처리
 	for (const fill of fillsResult.orders) {
-		const dbOrder = dbPendingMap.get(fill.orderNo);
+		const dbOrder = dbPendingMap.get(normalizeOrderNo(fill.orderNo));
 		if (!dbOrder) continue; // 우리 주문이 아닌 체결
 
 		logger.info("PollFills", "신규 체결 감지", {
@@ -60,12 +62,12 @@ async function pollFillsForStrategy(strategy: GridStrategy): Promise<number> {
 
 	// 2. 취소된 주문 동기화 (키움 앱에서 수동 취소 감지)
 	if (apiPendingResult.success) {
-		// 키움 API 미체결 주문번호 Set
-		const apiPendingSet = new Set(apiPendingResult.orders.map((o) => o.orderNo));
+		// 키움 API 미체결 주문번호 Set (앞자리 0 정규화)
+		const apiPendingSet = new Set(apiPendingResult.orders.map((o) => normalizeOrderNo(o.orderNo)));
 
 		// DB에는 있는데 키움에는 없는 주문 = 취소된 주문
 		const cancelledOrderIds = dbPendingOrders
-			.filter((dbOrder) => !apiPendingSet.has(dbOrder.order_id))
+			.filter((dbOrder) => !apiPendingSet.has(normalizeOrderNo(dbOrder.order_id)))
 			.map((o) => o.order_id);
 
 		if (cancelledOrderIds.length > 0) {

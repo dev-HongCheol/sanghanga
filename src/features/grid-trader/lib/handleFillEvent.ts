@@ -33,7 +33,7 @@ export async function handleFillEvent(
 	});
 
 	// 1. 주문 상태 FILLED 갱신
-	await updateOrderStatus(filledOrder.order_id, "FILLED", fillTime);
+	await updateOrderStatus(filledOrder.order_id, "FILLED", fillTime, useAdminClient);
 
 	// 2. 체결 이벤트 DB 기록
 	const profitLoss =
@@ -50,7 +50,7 @@ export async function handleFillEvent(
 		fill_time: fillTime,
 		order_type: filledOrder.order_type,
 		profit_loss: profitLoss,
-	});
+	}, useAdminClient);
 
 	// 3. 카운터 주문 생성
 	if (filledOrder.order_type === "BUY") {
