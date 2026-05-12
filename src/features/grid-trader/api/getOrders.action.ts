@@ -139,9 +139,14 @@ export async function getPendingOrdersAction(
 	stockCode?: string
 ): Promise<{ success: true; orders: PendingOrder[] } | { success: false; error: string }> {
 	try {
-		logger.info("GetPendingOrdersAction", "미체결 주문 조회 시작", {
-			stockCode: stockCode || "전체",
-		});
+		logger.info(
+			"GetPendingOrdersAction",
+			"미체결 주문 조회 시작",
+			{
+				stockCode: stockCode || "전체",
+			},
+			true
+		);
 
 		// 키움 API 호출 (ka10075)
 		const response = await kiwoomClient.request<PendingOrdersResponse>("/api/dostk/acnt", {
@@ -168,9 +173,14 @@ export async function getPendingOrdersAction(
 			orderTime: order.tm,
 		}));
 
-		logger.info("GetPendingOrdersAction", "미체결 주문 조회 완료", {
-			count: orders.length,
-		});
+		logger.info(
+			"GetPendingOrdersAction",
+			"미체결 주문 조회 완료",
+			{
+				count: orders.length,
+			},
+			true
+		);
 
 		return { success: true, orders };
 	} catch (error) {
@@ -196,9 +206,14 @@ export async function getFilledOrdersAction(
 	stockCode?: string
 ): Promise<{ success: true; orders: FilledOrder[] } | { success: false; error: string }> {
 	try {
-		logger.info("GetFilledOrdersAction", "체결 주문 조회 시작", {
-			stockCode: stockCode || "전체",
-		});
+		logger.info(
+			"GetFilledOrdersAction",
+			"체결 주문 조회 시작",
+			{
+				stockCode: stockCode || "전체",
+			},
+			true
+		);
 
 		// 키움 API 호출 (ka10076)
 		const response = await kiwoomClient.request<FilledOrdersResponse>("/api/dostk/acnt", {
@@ -227,9 +242,14 @@ export async function getFilledOrdersAction(
 			orderTime: order.ord_tm,
 		}));
 
-		logger.info("GetFilledOrdersAction", "체결 주문 조회 완료", {
-			count: orders.length,
-		});
+		logger.info(
+			"GetFilledOrdersAction",
+			"체결 주문 조회 완료",
+			{
+				count: orders.length,
+			},
+			true
+		);
 
 		return { success: true, orders };
 	} catch (error) {
