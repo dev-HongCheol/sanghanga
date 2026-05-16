@@ -15,9 +15,9 @@
  * ```
  */
 
+import type { AccountBalance } from "@/features/grid-trader";
 import { create } from "zustand";
 import { devtools } from "zustand/middleware";
-import type { AccountBalance } from "@/features/grid-trader";
 
 interface BalanceStore {
 	/** 계좌 잔고 정보 */
@@ -49,18 +49,11 @@ export const useBalanceStore = create<BalanceStore>()(
 			isLoading: true,
 			isConnected: false,
 
-			setBalance: (balance) =>
-				set(
-					{ balance, isLoading: false },
-					false,
-					"setBalance"
-				),
+			setBalance: (balance) => set({ balance, isLoading: false }, false, "setBalance"),
 
-			setLoading: (isLoading) =>
-				set({ isLoading }, false, "setLoading"),
+			setLoading: (isLoading) => set({ isLoading }, false, "setLoading"),
 
-			setConnected: (isConnected) =>
-				set({ isConnected }, false, "setConnected"),
+			setConnected: (isConnected) => set({ isConnected }, false, "setConnected"),
 
 			getHolding: (stockCode) => {
 				const { balance } = get();
@@ -68,12 +61,7 @@ export const useBalanceStore = create<BalanceStore>()(
 				return balance.holdings.find((h) => h.stockCode === stockCode) ?? null;
 			},
 
-			reset: () =>
-				set(
-					{ balance: null, isLoading: true, isConnected: false },
-					false,
-					"reset"
-				),
+			reset: () => set({ balance: null, isLoading: true, isConnected: false }, false, "reset"),
 		}),
 		{ name: "BalanceStore" }
 	)

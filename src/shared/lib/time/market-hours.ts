@@ -45,9 +45,7 @@ const MARKET_CONFIG = {
 function getKoreanTime(): Date {
 	// 로컬 시간을 한국 시간대로 변환
 	const now = new Date();
-	const koreanTime = new Date(
-		now.toLocaleString("en-US", { timeZone: "Asia/Seoul" })
-	);
+	const koreanTime = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Seoul" }));
 	return koreanTime;
 }
 

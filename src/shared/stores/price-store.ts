@@ -13,9 +13,9 @@
  * ```
  */
 
+import type { CurrentPrice } from "@/features/grid-trader";
 import { create } from "zustand";
 import { devtools } from "zustand/middleware";
-import type { CurrentPrice } from "@/features/grid-trader";
 
 interface PriceStore {
 	/** 종목별 현재가 정보 (종목코드 → CurrentPrice) */
@@ -60,23 +60,16 @@ export const usePriceStore = create<PriceStore>()(
 					"setPrice"
 				),
 
-			setLoading: (isLoading) =>
-				set({ isLoading }, false, "setLoading"),
+			setLoading: (isLoading) => set({ isLoading }, false, "setLoading"),
 
-			setConnected: (isConnected) =>
-				set({ isConnected }, false, "setConnected"),
+			setConnected: (isConnected) => set({ isConnected }, false, "setConnected"),
 
 			getPrice: (stockCode) => {
 				const { prices } = get();
 				return prices[stockCode] ?? null;
 			},
 
-			reset: () =>
-				set(
-					{ prices: {}, isLoading: true, isConnected: false },
-					false,
-					"reset"
-				),
+			reset: () => set({ prices: {}, isLoading: true, isConnected: false }, false, "reset"),
 		}),
 		{ name: "PriceStore" }
 	)

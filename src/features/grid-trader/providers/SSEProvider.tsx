@@ -13,10 +13,10 @@
  * ```
  */
 
-import { useEffect, useRef, type ReactNode } from "react";
+import type { AccountBalance, CurrentPrice } from "@/features/grid-trader";
 import { useBalanceStore } from "@/shared/stores/balance-store";
 import { usePriceStore } from "@/shared/stores/price-store";
-import type { AccountBalance, CurrentPrice } from "@/features/grid-trader";
+import { type ReactNode, useEffect, useRef } from "react";
 
 interface SSEProviderProps {
 	children: ReactNode;

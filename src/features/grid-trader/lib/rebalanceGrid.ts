@@ -28,7 +28,10 @@ export interface RebalanceResult {
  * @param useAdminClient - Admin Client 사용 여부 (Cron 등 백그라운드 작업용, 기본값: false)
  * @returns 리밸런싱 결과
  */
-export async function rebalanceGrid(strategy: GridStrategy, useAdminClient = false): Promise<RebalanceResult> {
+export async function rebalanceGrid(
+	strategy: GridStrategy,
+	useAdminClient = false
+): Promise<RebalanceResult> {
 	logger.info("RebalanceGrid", "리밸런싱 시작", {
 		strategyId: strategy.id,
 		stockCode: strategy.stock_code,

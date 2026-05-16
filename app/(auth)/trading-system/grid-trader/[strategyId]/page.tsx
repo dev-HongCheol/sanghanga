@@ -6,9 +6,9 @@ import {
 import {
 	FillHistoryTable,
 	GridStrategyForm,
-	RealtimePriceDisplay,
-	RealtimeBalanceDisplay,
 	RealtimeActiveOrdersTable,
+	RealtimeBalanceDisplay,
+	RealtimePriceDisplay,
 	RebalanceButton,
 	SSEProvider,
 } from "@/features/grid-trader";

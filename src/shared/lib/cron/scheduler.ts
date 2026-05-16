@@ -16,14 +16,14 @@
  * - 미체결 주문 정리는 장시간 체크 없이 항상 실행
  */
 
-import cron, { type ScheduledTask } from "node-cron";
-import { logger } from "../logger";
-import { isMarketOpen } from "../time/market-hours";
-import { syncPricesLogic } from "@/features/grid-trader/lib/cron/syncPrices";
-import { syncBalanceLogic } from "@/features/grid-trader/lib/cron/syncBalance";
 import { checkFillsLogic } from "@/features/grid-trader/lib/cron/checkFills";
 import { checkRebalanceLogic } from "@/features/grid-trader/lib/cron/checkRebalance";
 import { cleanupStaleOrdersLogic } from "@/features/grid-trader/lib/cron/cleanupStaleOrders";
+import { syncBalanceLogic } from "@/features/grid-trader/lib/cron/syncBalance";
+import { syncPricesLogic } from "@/features/grid-trader/lib/cron/syncPrices";
+import cron, { type ScheduledTask } from "node-cron";
+import { logger } from "../logger";
+import { isMarketOpen } from "../time/market-hours";
 
 // 환경변수
 const IS_CRON_ENABLED = process.env.ENABLE_CRON === "true";
@@ -152,7 +152,12 @@ export function startCronScheduler(): void {
 
 	logger.info("CronScheduler", "========================================", undefined, true);
 	logger.info("CronScheduler", "Grid Trader Cron Scheduler", undefined, true);
-	logger.info("CronScheduler", `ENABLE_CRON: ${IS_CRON_ENABLED ? "활성" : "비활성"}`, undefined, true);
+	logger.info(
+		"CronScheduler",
+		`ENABLE_CRON: ${IS_CRON_ENABLED ? "활성" : "비활성"}`,
+		undefined,
+		true
+	);
 	logger.info("CronScheduler", "장시간 제어: 평일 09:00~18:00 (KST)", undefined, true);
 	logger.info("CronScheduler", "정규장 + 시간외 거래 모두 포함", undefined, true);
 	logger.info("CronScheduler", "========================================", undefined, true);

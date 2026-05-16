@@ -179,7 +179,10 @@ export async function toggleStrategyActive(id: string, isActive: boolean): Promi
  * @returns 생성된 주문
  * @throws {Error} DB 오류 시
  */
-export async function createOrder(data: GridOrderInsert, useAdminClient = false): Promise<GridOrder> {
+export async function createOrder(
+	data: GridOrderInsert,
+	useAdminClient = false
+): Promise<GridOrder> {
 	const supabase = await getSupabaseClient(useAdminClient);
 
 	const { data: order, error } = await supabase
@@ -358,7 +361,10 @@ export async function cancelOrders(orderIds: string[], useAdminClient = false): 
  * @returns 생성된 체결 이벤트
  * @throws {Error} DB 오류 시
  */
-export async function createFillEvent(data: FillEventInsert, useAdminClient = false): Promise<FillEvent> {
+export async function createFillEvent(
+	data: FillEventInsert,
+	useAdminClient = false
+): Promise<FillEvent> {
 	const supabase = await getSupabaseClient(useAdminClient);
 
 	const { data: fillEvent, error } = await supabase

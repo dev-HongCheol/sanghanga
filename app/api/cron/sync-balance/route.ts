@@ -8,8 +8,8 @@
  * **호출**: Cron 스케줄러가 3초마다 호출
  */
 
-import { NextResponse } from "next/server";
 import { syncBalanceLogic } from "@/features/grid-trader/lib/cron/syncBalance";
+import { NextResponse } from "next/server";
 
 /**
  * Route Handler: HTTP 엔드포인트

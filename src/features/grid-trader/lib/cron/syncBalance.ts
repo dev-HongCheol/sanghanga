@@ -3,12 +3,11 @@
  * @description 계좌 잔고 조회 → 메모리 캐시 + SSE push
  */
 
-import { broadcastBalance } from "@/shared/lib/sse/sse-manager";
 import { updateBalance } from "@/shared/lib/cache/balance-cache";
-import { logger } from "@/shared/lib/logger";
 import { kiwoomClient } from "@/shared/lib/kiwoom/client";
-import { AccountBalance } from "../../api/getAccountBalance.action";
-
+import { logger } from "@/shared/lib/logger";
+import { broadcastBalance } from "@/shared/lib/sse/sse-manager";
+import type { AccountBalance } from "../../api/getAccountBalance.action";
 
 /**
  * kt00018 계좌평가잔고내역 API 응답

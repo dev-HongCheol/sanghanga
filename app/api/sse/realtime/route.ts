@@ -22,11 +22,11 @@
  * ```
  */
 
-import { registerClient, sendHeartbeat, unregisterClient } from "@/shared/lib/sse/sse-manager";
-import { logger } from "@/shared/lib/logger";
-import { getAllPrices } from "@/shared/lib/cache/price-cache";
 import { getBalance } from "@/shared/lib/cache/balance-cache";
+import { getAllPrices } from "@/shared/lib/cache/price-cache";
 import { startCronScheduler } from "@/shared/lib/cron/scheduler";
+import { logger } from "@/shared/lib/logger";
+import { registerClient, sendHeartbeat, unregisterClient } from "@/shared/lib/sse/sse-manager";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

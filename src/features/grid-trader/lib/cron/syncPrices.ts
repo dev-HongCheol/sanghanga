@@ -3,13 +3,13 @@
  * @description 활성 전략의 종목 현재가 조회 → 메모리 캐시 + SSE push
  */
 
-import { broadcastPrice } from "@/shared/lib/sse/sse-manager";
-import { updatePrice } from "@/shared/lib/cache/price-cache";
-import { logger } from "@/shared/lib/logger";
-import { isMarketOpen } from "@/shared/lib/time/market-hours";
-import { kiwoomClient } from "@/shared/lib/kiwoom/client";
 import { getActiveStrategies } from "@/entities/grid-trader";
-import { CurrentPrice } from "../../api/getCurrentPrice.action";
+import { updatePrice } from "@/shared/lib/cache/price-cache";
+import { kiwoomClient } from "@/shared/lib/kiwoom/client";
+import { logger } from "@/shared/lib/logger";
+import { broadcastPrice } from "@/shared/lib/sse/sse-manager";
+import { isMarketOpen } from "@/shared/lib/time/market-hours";
+import type { CurrentPrice } from "../../api/getCurrentPrice.action";
 
 /**
  * 주식 기본 정보 응답
@@ -95,9 +95,7 @@ export async function syncPricesLogic() {
 		}
 
 		// 중복 제거 (같은 종목이 여러 전략에 있을 수 있음)
-		const uniqueStockCodes = Array.from(
-			new Set(activeStrategies.map((s) => s.stock_code))
-		);
+		const uniqueStockCodes = Array.from(new Set(activeStrategies.map((s) => s.stock_code)));
 
 		const results = [];
 

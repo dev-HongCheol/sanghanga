@@ -60,7 +60,12 @@ export function registerClient(
 		connectedAt: new Date(),
 	});
 
-	logger.info("SSEManager", `클라이언트 연결: ${clientId} (총 ${connectedClients.size}개)`, undefined, true);
+	logger.info(
+		"SSEManager",
+		`클라이언트 연결: ${clientId} (총 ${connectedClients.size}개)`,
+		undefined,
+		true
+	);
 }
 
 /**
@@ -135,7 +140,10 @@ export async function broadcastPrice(stockCode: string, priceInfo: CurrentPrice)
  * @param balance - 계좌 잔고 정보
  * @param accountId - 계좌 ID
  */
-export async function broadcastBalance(balance: AccountBalance, accountId = "default"): Promise<void> {
+export async function broadcastBalance(
+	balance: AccountBalance,
+	accountId = "default"
+): Promise<void> {
 	await sendSSE("balance", { accountId, balance });
 }
 

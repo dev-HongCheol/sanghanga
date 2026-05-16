@@ -69,7 +69,9 @@ export function createAdminClient() {
 
 	if (!supabaseServiceKey) {
 		console.error("❌ SUPABASE_SERVICE_ROLE_KEY 환경 변수가 설정되지 않았습니다.");
-		throw new Error("Supabase Service Role Key가 설정되지 않았습니다. .env.local 파일을 확인해주세요.");
+		throw new Error(
+			"Supabase Service Role Key가 설정되지 않았습니다. .env.local 파일을 확인해주세요."
+		);
 	}
 
 	return createClient<Database>(supabaseUrl, supabaseServiceKey, {
