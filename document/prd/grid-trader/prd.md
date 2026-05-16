@@ -7,10 +7,11 @@
 | **작성일** | 2026-05-01 |
 | **작성자** | User |
 | **상태** | 🚧 구현중 |
-| **버전** | v1.5.6 |
+| **버전** | v1.6.3 |
 | **우선순위** | Medium |
 | **체크리스트** | [checklist.md](./checklist.md) |
-| **기술 문서** | [호가 단위 조정 가이드](./tick-size-guide.md) |
+| **구현 패턴** | [implementation-patterns.md](./implementation-patterns.md) |
+| **호가 단위** | [tick-size-guide.md](./tick-size-guide.md) |
 
 ## 🎯 개요
 
@@ -58,17 +59,6 @@
 - 그리드 이탈 → 리밸런싱 트리거
 
 ### 3. 시스템 스케줄링
-
-#### 일일 스케줄
-
-| 시간 | 작업 |
-|:-----|:-----|
-| 08:00 | OAuth 2.0 토큰 갱신 |
-| 08:30 | 잔고 확인, 기존 미체결 주문 조회 |
-| 08:50 | 활성 전략 초기 그리드 배치 |
-| 09:00~15:30 | 체결 이벤트 Polling (1초 간격) |
-| 15:30 | 미체결 취소 + 일일 P&L 기록 |
-| 매시간 | 리밸런싱 체크 |
 
 #### 실시간 데이터 동기화 (v1.4)
 
@@ -148,10 +138,11 @@
 |:-----|:---------|
 | **DB** | Supabase Self-Hosting (PostgreSQL) — `@supabase/supabase-js` |
 | **스키마** | `database/schemas/grid-trader/` (실행 완료) |
-| **Cron** | `node-cron` (서버 측 주기적 작업) |
+| **Cron** | `node-cron` (서버 측 주기적 작업, 5개 Job) |
 | **실시간 통신** | Server-Sent Events (SSE) — Next.js Route Handler |
 | **메모리 캐시** | `Map<string, T>` (서버: 현재가, 잔고) |
 | **상태 관리** | Zustand (클라이언트: SSE 데이터 → 전역 Store) |
+| **동시성 제어** | DB 기반 Mutex (PostgreSQL advisory lock) — `shared/lib/mutex/db-mutex.ts` |
 | **체결 감지** | Polling 방식 (키움 WebSocket은 시세 전용, 체결은 REST만 가능) |
 | **알림** | 텔레그램 Bot API (Phase 2) |
 
@@ -200,6 +191,13 @@ Zustand Store (price-store, balance-store)
 - `kt10003` 주식 취소주문
 - `kt00018` 계좌평가잔고내역요청
 
+### 구현 패턴
+
+Grid Trader 전용 구현 패턴 및 주의사항은 별도 문서를 참조하세요:
+
+- **[구현 패턴 가이드](./implementation-patterns.md)** - 그리드 이탈 판정, 보유 수량 체크, Cron 환경 처리
+- **[호가 단위 조정 가이드](./tick-size-guide.md)** - 한국 주식시장 호가 단위 자동 조정
+
 ### Rate Limiting
 - 전체: 초당 20회 / 주문: 초당 5회 이하
 - 초기 그리드 배치: 500ms 간격 분산
@@ -224,56 +222,24 @@ Zustand Store (price-store, balance-store)
 pnpm dlx shadcn@latest add form input button card table badge switch separator alert dialog select
 ```
 
-## 🔮 향후 개선 (Optional)
+## 🔮 향후 개선
 
-### 공휴일 포함 장시간 체크
+향후 개선 및 확장 계획은 별도 문서를 참조하세요: **[future-improvements.md](./future-improvements.md)**
 
-**현황**: `shared/lib/time/market-hours.ts`의 `isMarketOpen()`은 요일(평일/주말)만 판단하며 공휴일을 체크하지 못함.
-
-**조사 결과**: 키움 REST API에는 장 개장 여부 또는 공휴일을 직접 반환하는 전용 API가 없음. 전체 명세 확인 완료.
-
-**권장 구현 방법: 공공데이터포털 한국천문연구원 특일 정보 API**
-
-| 항목 | 내용 |
-|:-----|:-----|
-| URL | `https://apis.data.go.kr/B090041/openapi/service/SpcdeInfoService/getRestDeInfo` |
-| 인증 | 공공데이터포털 API 키 (무료, `data.go.kr` 회원가입 후 발급) |
-| 호출 시점 | 서버 기동 시 또는 연초 1회 → 메모리/DB 캐싱 |
-| 파라미터 | `solYear=2025&numOfRows=30&_type=json` |
-| 반환 | 설날, 추석, 광복절 등 법정공휴일 날짜 목록 |
-
-**구현 위치**: `shared/lib/time/market-hours.ts`의 `isWithinMarketHours(date)` 함수에 공휴일 날짜 Set 체크 추가
-
-```typescript
-// 대략적인 구현 방향
-const HOLIDAYS = new Set<string>(); // "20250101", "20250128" 형식
-
-function isWithinMarketHours(date: Date): boolean {
-  const ymd = formatYYYYMMDD(date); // "20250101"
-  if (HOLIDAYS.has(ymd)) return false; // 공휴일 제외
-  // 기존 요일 + 시간 체크 ...
-}
-```
-
-**환경변수 추가 필요**: `DATA_GO_KR_API_KEY` (`.env.local`)
-
-### 주문/체결 데이터 실시간 갱신 (SSE 확장)
-
-**현황**: `sse-manager.ts`에 `broadcastOrders`, `broadcastFillEvent` 함수가 선언되어 있으나 Cron 호출과 SSEProvider 리스너 모두 미연결 상태.
-
-**구현 방법**:
-
-1. Cron `checkFillsLogic`에서 체결 감지 후 `broadcastOrders(strategyId, updatedOrders)` 호출
-2. `SSEProvider`에 `orders` 이벤트 리스너 추가 → Zustand `order-store` 업데이트
-3. `RealtimeActiveOrdersTable`이 props 대신 Zustand store 구독
-4. 상세 페이지 SSR props는 초기값으로만 사용 → store 초기화에 활용
-
-**기대 효과**: `router.refresh()` 제거 → 깜빡임 없는 부드러운 테이블 갱신, 체결 즉시 자동 반영
+**주요 개선 항목**:
+- 🚨 **손익 계산 정확도 개선** (Critical) - 수수료/세금 포함 정확한 계산
+- 주문/체결 실시간 갱신 (SSE 확장)
+- 실시간 잔고 패널 개선 (오늘의 손익/전체 손익 표시)
+- 체결 히스토리 페이지네이션
+- 공휴일 포함 장시간 체크
+- 알림 및 모니터링 (텔레그램, P&L 차트, 통계)
+- 다중 종목 지원
 
 ---
 
 ## 🚨 리스크 및 주의사항
 
+- **손익 계산 부정확성 (v1.6.1 발견)**: 현재 체결 히스토리의 손익은 수수료/세금을 미포함하여 약 4~5% 과대계상됨. 실제 손익은 키움 HTS에서 확인 필요. 정확한 계산을 위한 개선 방안은 [향후 개선 문서](./future-improvements.md) 참조
 - **Core 물량 보호**: `minHoldingLimit` 이하 매도 금지는 코드 레벨에서 강제
 - **예수금 부족**: 매수 주문 전 반드시 잔고 확인
 - **계좌 비밀번호**: `.env.local` 환경변수로만 관리
@@ -295,5 +261,12 @@ function isWithinMarketHours(date: Date): boolean {
 | v1.5.2 | 2026-05-12 | 공휴일 장시간 체크 향후 개선 사항 문서화 (공공데이터포털 API 활용 방안) |
 | v1.5.3 | 2026-05-12 | SSE 이벤트 현황 정리, 주문/체결 실시간 갱신 미완성 상태 및 개선 방향 문서화 |
 | v1.5.4 | 2026-05-12 | 미체결 주문 정리 Cron 추가 (매일 08:00 평일, 전날 PENDING → CANCELLED) |
-| v1.5.5 | 2026-05-12 | 체결 감지 버그 수정: Cron 컨텍스트에서 cookies() 호출 오류로 sh_fill_events 미기록, ord_no 앞자리 0 패딩 매칭 오류 |
-| v1.5.6 | 2026-05-12 | 리밸런싱 체크 주기 개선: 09:00~10:00 KST 1분 간격 (장 초반 급변동 대응), 이후 10분 간격 유지 |
+| v1.5.5 | 2026-05-12 | 체결 감지 버그 수정 (Cron 컨텍스트 cookies 오류, 주문번호 정규화) |
+| v1.5.6 | 2026-05-12 | 리밸런싱 체크 주기 개선 (09:00~10:00 1분 간격, 이후 10분 간격) |
+| v1.5.7 | 2026-05-13 | 리밸런싱 중복 실행 버그 수정 (DB 기반 Mutex 도입) |
+| v1.5.8 | 2026-05-13 | 무한 리밸런싱 버그 수정 (매도 주문 부재 시 이론적 최대값 계산) |
+| v1.5.9 | 2026-05-14 | 카운터 매도 수량 계산 버그 수정 (minHoldingLimit 일관성) |
+| v1.6.0 | 2026-05-14 | 체결 시각 파싱 버그 수정 (HHmmss → ISO 8601 변환) |
+| v1.6.1 | 2026-05-15 | 향후 개선사항 별도 문서 분리, 손익 계산 부정확성 발견, UI 개선 제안 |
+| v1.6.2 | 2026-05-15 | bug-fixes.md 삭제 및 핵심 패턴 문서화 (구현 패턴 섹션 추가) |
+| v1.6.3 | 2026-05-15 | 구현 패턴을 implementation-patterns.md로 분리, PRD 코드 제거 및 간소화 |

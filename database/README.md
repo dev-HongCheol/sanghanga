@@ -20,6 +20,8 @@ database/
 │   │   ├── 01-schema.sql      # 전체 스키마 (새 환경용)
 │   │   ├── 02-migration.sql   # 마이그레이션 (기존 프로젝트용)
 │   │   └── 03-reset.sql       # 리셋 (전체 데이터 삭제)
+│   ├── mutex/                 # 분산 Mutex (PostgreSQL Advisory Lock)
+│   │   └── 01-schema.sql      # Mutex SQL 함수 (락 획득/해제)
 │   └── [feature-name]/        # 다른 기능...
 └── README.md                   # 이 파일
 ```
@@ -169,6 +171,39 @@ const { data, error } = await supabase.from('sh_grid_strategies').select('*');
 5. **문서 업데이트**: 이 README 및 관련 PRD 업데이트
 6. **마이그레이션 실행**: 운영 환경에 `02-migration.sql` 실행
 7. **검증**: 데이터 무결성 및 애플리케이션 동작 확인
+
+## 특수 스키마
+
+### Mutex (분산 잠금)
+
+**위치**: `database/schemas/mutex/01-schema.sql`
+
+**용도**: Next.js 멀티 프로세스 환경에서 Cron 작업 중복 실행 방지
+
+**기능**:
+- `sh_try_acquire_lock(lock_key BIGINT)`: 락 획득 시도 (비블로킹)
+- `sh_release_lock(lock_key BIGINT)`: 락 해제
+- `sh_release_all_locks()`: 모든 락 강제 해제 (디버깅용)
+
+**특징**:
+- PostgreSQL advisory lock 기반
+- 테이블 없이 메모리에서 작동 (빠름)
+- DB 연결 종료 시 자동 해제
+- 프로세스 간 공유됨
+
+**사용 예시**:
+```typescript
+import { withMutex } from '@/shared/lib/mutex/db-mutex';
+
+const result = await withMutex('my_lock', async () => {
+  // 락이 획득된 상태에서 실행
+  return await someTask();
+}, 100); // 100ms 타임아웃
+
+if (result === null) {
+  console.log('다른 프로세스가 실행 중');
+}
+```
 
 ## 주의사항
 

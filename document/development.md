@@ -555,12 +555,192 @@ export function startCronScheduler() {
 ENABLE_CRON=true  # 장중에만 활성화
 ```
 
-**⚠️ 주의사항**:
-- Cron에서 DB 접근 시 반드시 `createAdminClient()` 사용 (cookies 불필요)
-- Rate Limiting 고려 필수
-- 에러 핸들링 및 로깅 필수
+### Cron 개발 패턴 (필수)
 
-**예시**: Grid Trader의 가격/잔고 동기화 (PRD 참조)
+**⚠️ 이 패턴들은 안정적인 Cron 시스템 구축을 위한 핵심 규칙입니다.**
+
+#### 1. Admin 클라이언트 필수 사용
+
+**문제**: Cron 컨텍스트에서 `cookies()` 호출 시 Request 컨텍스트가 없어 에러 발생
+
+```typescript
+// ❌ 금지 - Cron에서 일반 클라이언트 사용
+const supabase = await createServerClient(); // cookies() 암묵적 호출 → 에러
+const { data } = await supabase.from('sh_grid_strategies').select('*');
+
+// ✅ 필수 - Admin 클라이언트 사용
+const supabase = await createAdminClient(); // cookies 불필요
+const { data } = await supabase.from('sh_grid_strategies').select('*');
+```
+
+**패턴**: DB 접근 함수에 `useAdmin` 파라미터 추가
+
+```typescript
+// entities/{도메인}/api/*.api.ts
+export async function getActiveStrategies(useAdmin = false) {
+  const supabase = useAdmin
+    ? await createAdminClient()
+    : await createServerClient();
+
+  return supabase.from('sh_grid_strategies').select('*').eq('is_active', true);
+}
+
+// Cron에서 호출
+const strategies = await getActiveStrategies(true); // ✅ Admin 모드
+```
+
+#### 2. 분산 환경 동시성 제어 (DB Mutex)
+
+**문제**: Vercel 멀티 프로세스 환경에서 메모리 기반 Mutex는 각 프로세스마다 독립적으로 동작 → 중복 실행
+
+**해결**: PostgreSQL Advisory Lock 기반 분산 Mutex 사용
+
+**DB 함수 생성** (`database/schemas/mutex/01-schema.sql`):
+```sql
+CREATE OR REPLACE FUNCTION sh_try_acquire_lock(lock_id BIGINT)
+RETURNS BOOLEAN AS $$
+BEGIN
+    RETURN pg_try_advisory_lock(lock_id);
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION sh_release_lock(lock_id BIGINT)
+RETURNS BOOLEAN AS $$
+BEGIN
+    RETURN pg_advisory_unlock(lock_id);
+END;
+$$ LANGUAGE plpgsql;
+```
+
+**Mutex 래퍼** (`src/shared/lib/mutex/db-mutex.ts`):
+```typescript
+/**
+ * DB 기반 분산 Mutex (PostgreSQL advisory lock)
+ * @param lockName - 락 이름 (문자열)
+ * @param fn - 임계 영역 함수
+ * @param timeoutMs - 타임아웃 (기본 5초)
+ * @returns 함수 실행 결과 또는 null (락 획득 실패 시)
+ */
+export async function withMutex<T>(
+  lockName: string,
+  fn: () => Promise<T>,
+  timeoutMs: number = 5000
+): Promise<T | null> {
+  const lockId = hashLockName(lockName); // 문자열 → BIGINT 해시
+  const acquired = await tryAcquireLock(lockId);
+
+  if (!acquired) {
+    logger.warn("Mutex", `락 획득 실패: ${lockName} (다른 프로세스 실행 중)`);
+    return null; // 다른 프로세스 실행 중 → 스킵
+  }
+
+  try {
+    return await fn();
+  } finally {
+    await releaseLock(lockId);
+  }
+}
+```
+
+**Cron에서 사용**:
+```typescript
+export async function checkRebalanceLogic() {
+  const result = await withMutex(
+    "grid_rebalance_check",
+    checkRebalanceInternal,
+    100 // 100ms 이내 락 획득 못하면 스킵
+  );
+
+  if (result === null) {
+    logger.warn("이미 다른 프로세스에서 실행 중 - 스킵");
+    return { success: true, message: "이미 실행 중", rebalanced: 0 };
+  }
+
+  return result;
+}
+```
+
+**참조**: `database/schemas/mutex/`, `shared/lib/mutex/db-mutex.ts`
+
+#### 3. 방어적 프로그래밍
+
+**배열 연산 전 빈 배열 체크 필수**:
+
+```typescript
+// ❌ 위험 - 빈 배열 시 -Infinity 반환
+const prices = pendingOrders.map((o) => o.grid_price);
+const maxPrice = Math.max(...prices); // prices = [] → -Infinity
+
+// ✅ 안전
+if (pendingOrders.length === 0) {
+  logger.warn("미체결 주문이 없어 최대값 계산 불가");
+  return false;
+}
+
+const prices = pendingOrders.map((o) => o.grid_price);
+const maxPrice = Math.max(...prices);
+```
+
+#### 4. 외부 API 데이터 정규화
+
+**문제**: 외부 API 형식과 내부 데이터 형식 차이로 매칭 실패
+
+**예시 - 키움 API 주문번호**:
+- 키움 API: `"0000037"` (앞자리 0 패딩)
+- DB 저장: `"37"` (숫자형 변환)
+
+```typescript
+// 정규화 함수
+const normalizeOrderNo = (no: string) => no.replace(/^0+/, "") || "0";
+
+// DB 주문 매핑
+const dbPendingMap = new Map(
+  dbPendingOrders.map((o) => [normalizeOrderNo(o.order_id), o])
+);
+
+// 키움 API 응답 처리
+for (const fill of fillsResult.orders) {
+  const dbOrder = dbPendingMap.get(normalizeOrderNo(fill.orderNo)); // ✅ 정규화 후 매칭
+  if (!dbOrder) continue;
+  // ...
+}
+```
+
+**예시 - 키움 API 시각 형식**:
+- 키움 API: `"090005"` (HHmmss)
+- DB TIMESTAMPTZ: ISO 8601 필요
+
+```typescript
+/**
+ * 키움 API 시각 형식 → ISO 8601 변환
+ */
+function parseKiwoomTime(hhmmss: string): string {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+
+  const hh = hhmmss.substring(0, 2);
+  const mm = hhmmss.substring(2, 4);
+  const ss = hhmmss.substring(4, 6);
+
+  return `${year}-${month}-${day}T${hh}:${mm}:${ss}+09:00`; // KST
+}
+
+const filledAt = parseKiwoomTime(fill.orderTime); // "090005" → "2026-05-14T09:00:05+09:00"
+```
+
+#### 5. 기타 주의사항
+
+- **Rate Limiting**: 키움 API 호출량 제한 (초당 20회, 주문 초당 5회)
+- **에러 핸들링**: try-catch로 예외 처리 + 로깅
+- **타임아웃**: 장시간 실행 방지 (Mutex 타임아웃 설정)
+
+#### 실제 적용 사례
+
+**Grid Trader**: 가격/잔고/체결 감지를 Cron으로 처리하며, 위 패턴을 모두 적용합니다.
+- [Grid Trader PRD](../prd/grid-trader/prd.md)
+- [Grid Trader 구현 패턴](../prd/grid-trader/implementation-patterns.md#4-cron-환경-특수-처리)
 
 ## 스타일링
 

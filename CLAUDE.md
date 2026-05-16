@@ -46,12 +46,14 @@
 
 #### PRD 파일 구조 규칙
 
-PRD는 **2개 파일**로 분리하여 작성 (토큰 효율 + 변경 빈도 분리):
+PRD는 **여러 파일로 분리**하여 작성 (토큰 효율 + 변경 빈도 분리):
 
 ```
 document/prd/{기능명}/
-├── prd.md        # 지속적인 요구사항 (Source of Truth)
-└── checklist.md  # 구현 파일 목록 + 핵심 역할
+├── prd.md                       # 지속적인 요구사항 (Source of Truth)
+├── checklist.md                 # 구현 파일 목록 + 핵심 역할
+├── implementation-patterns.md   # 구현 패턴 상세 (선택, 코드 포함 가능)
+└── future-improvements.md       # 향후 개선 계획 (선택)
 ```
 
 ##### prd.md 작성 원칙
@@ -101,6 +103,72 @@ document/prd/{기능명}/
 **예시**: Logger에 폴링 로그 제어 기능 추가
 - ✅ `shared/lib/logger.ts`의 JSDoc에 상세 사용법 기록
 - ❌ Grid Trader 체크리스트에 "Logger 개선" 항목 추가하지 않음
+
+**상세 가이드**: [`document/development.md - 협업 워크플로우`](./document/development.md#협업-워크플로우-claude--gemini)
+
+##### 아키텍처 패턴 및 버그 수정 원칙
+
+**📋 핵심 원칙: "문서는 Source of Truth, 이력은 Git에"**
+
+#### 1. 아키텍처 패턴 문서화
+
+**버그를 통해 발견한 아키텍처 규칙은 문서에 기록** (향후 동일 실수 방지):
+
+**공통 패턴** → `document/development.md` 또는 `document/coding-standards.md`
+- Cron Admin 클라이언트 필수 사용
+- DB 기반 Mutex (분산 환경 동시성 제어)
+- 방어적 프로그래밍 (빈 배열 체크 등)
+- 외부 API 데이터 정규화
+
+**기능별 패턴** → `document/prd/{기능명}/prd.md` (기술 스택 섹션 아래)
+- Grid Trader: 그리드 이탈 판정, 보유 수량 체크 일관성 등
+- 각 기능에 특화된 핵심 로직 패턴
+
+#### 2. 버그 수정 기록 규칙
+
+**Git commit 메시지에 상세 기록** (코드와 함께 버전 관리):
+
+```bash
+fix: 무한 리밸런싱 버그 수정
+
+- 원인: 매도 주문 없을 때 Math.max(...[]) → -Infinity 반환
+- 해결: 이론적 최대값 계산 로직 추가 (최고 매수가 + gap * (upper_grid_count + 1))
+- 영향 파일: features/grid-trader/lib/cron/checkRebalance.ts:56-84
+- 패턴: 배열 연산 전 빈 배열 체크 필수 (development.md 참조)
+```
+
+**PRD 변경 이력에는 하이레벨 요약만** (1줄):
+
+```markdown
+| v1.5.8 | 2026-05-13 | 무한 리밸런싱 버그 수정 (매도 주문 부재 시 이론적 최대값 계산) |
+```
+
+#### 3. 작업 프로세스
+
+**버그 수정 시**:
+1. ✅ 버그 원인 분석 → 아키텍처 패턴 도출
+2. ✅ 패턴을 문서에 추가 (공통이면 development.md, 기능별이면 prd.md)
+3. ✅ 코드 수정 + Git commit에 상세 기록
+4. ✅ PRD 변경 이력에 1줄 요약 추가
+5. ❌ bug-fixes.md 같은 별도 버그 이력 문서 생성하지 않음
+
+**이유**:
+- **문서 = 현재 요구사항 + 아키텍처 패턴** (미래에도 유효)
+- **Git = 변경 이력** (과거 기록, 필요 시 검색)
+- **중복 방지**: 버그 상세를 문서와 Git 양쪽에 기록하면 동기화 문제 발생
+
+##### future-improvements.md 작성 원칙 (선택)
+
+**미완성 기능 및 향후 개선 계획**을 별도 문서로 분리하여 PRD 길이 제한.
+
+**작성 시기**:
+- PRD가 너무 길어질 때 (400줄 이상)
+- 향후 개선 항목이 많을 때 (5개 이상)
+
+**작성 형식**:
+- 우선순위별 섹션 (긴급, 높음, 중간, 낮음)
+- 각 항목마다 구현 체크리스트 포함
+- PRD에서는 간단한 요약 + 링크만 제공
 
 **상세 가이드**: [`document/development.md - 협업 워크플로우`](./document/development.md#협업-워크플로우-claude--gemini)
 
@@ -344,13 +412,16 @@ pnpm db:types   # SaaS Supabase에서 타입 재생성 → database.types.ts 덮
 
 ### 버그 수정
 
-1. 원인 분석 → 코드 읽기, 로그 확인
-2. 최소한의 변경으로 수정
-3. 버그 재현 테스트 작성
-4. **문서 업데이트**:
-   - PRD 변경 이력에 버그 수정 요약 추가 (1줄)
+1. **원인 분석** → 코드 읽기, 로그 확인, 근본 원인 파악
+2. **아키텍처 패턴 도출** → 버그 원인이 공통 패턴이면 문서에 기록
+   - 공통 패턴 → `development.md` 또는 `coding-standards.md`
+   - 기능별 패턴 → `prd.md` (구현 패턴 섹션)
+3. **코드 수정** → 최소한의 변경으로 수정
+4. **테스트 작성** → 버그 재현 테스트
+5. **문서 업데이트**:
+   - **Git commit 메시지에 상세 기록** (원인, 해결, 영향 파일, 참조 패턴)
+   - PRD 변경 이력에 하이레벨 요약 추가 (1줄)
    - 체크리스트는 수정하지 않음 (핵심 역할은 변하지 않음)
-   - Git commit에 상세 내역 기록
 
 ### 리팩토링
 
@@ -388,6 +459,8 @@ pnpm db:types   # SaaS Supabase에서 타입 재생성 → database.types.ts 덮
 - [ ] `pnpm test` 통과
 - [ ] `pnpm build` 성공
 - [ ] 테스트 명세 작성 (test-spec-unit.md, test-spec-integration.md)
+- [ ] **버그 수정 시 아키텍처 패턴 문서화** (공통 패턴 → development.md, 기능별 → prd.md)
+- [ ] **Git commit 메시지에 상세 기록** (원인, 해결, 영향 파일, 참조 패턴)
 - [ ] PRD 변경 이력 업데이트 (버전별 하이레벨 요약 1줄)
 - [ ] `document/index.md` 상태 업데이트 (✅ 완료)
 
