@@ -5,6 +5,25 @@ import { getFilledOrdersAction, getPendingOrdersAction } from "../api/getOrders.
 import { handleFillEvent } from "./handleFillEvent";
 
 /**
+ * 키움 API 시각 형식 (HHmmss)을 ISO 8601 형식으로 변환
+ * @param hhmmss - "090005" 형식의 시각
+ * @returns ISO 8601 형식 문자열 (예: "2026-05-14T09:00:05+09:00")
+ */
+function parseKiwoomTime(hhmmss: string): string {
+	const now = new Date();
+	const year = now.getFullYear();
+	const month = String(now.getMonth() + 1).padStart(2, "0");
+	const day = String(now.getDate()).padStart(2, "0");
+
+	const hh = hhmmss.substring(0, 2);
+	const mm = hhmmss.substring(2, 4);
+	const ss = hhmmss.substring(4, 6);
+
+	// KST (UTC+9) 타임존 명시
+	return `${year}-${month}-${day}T${hh}:${mm}:${ss}+09:00`;
+}
+
+/**
  * 단일 전략의 체결 이벤트 감지 및 주문 동기화
  *
  * 1. DB의 PENDING 주문과 키움 API 체결 목록 비교 → 새 체결 감지
@@ -47,10 +66,21 @@ async function pollFillsForStrategy(strategy: GridStrategy): Promise<number> {
 			orderId: fill.orderNo,
 			orderType: fill.orderType,
 			filledPrice: fill.filledPrice,
+			orderTime: fill.orderTime,
 		});
 
 		try {
-			await handleFillEvent(dbOrder, strategy, fill.filledPrice, fill.orderTime, true);
+			// 키움 API 시각 형식 (HHmmss) → ISO 8601 변환
+			const filledAt = parseKiwoomTime(fill.orderTime);
+			await handleFillEvent(
+				dbOrder,
+				strategy,
+				fill.filledPrice,
+				filledAt,
+				fill.commission,
+				fill.tax,
+				true
+			);
 			processed++;
 		} catch (err) {
 			logger.error("PollFills", "체결 이벤트 처리 실패", {

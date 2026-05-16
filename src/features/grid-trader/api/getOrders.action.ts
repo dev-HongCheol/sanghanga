@@ -89,6 +89,14 @@ export interface FilledOrder {
 	 * 주문시간
 	 */
 	orderTime: string;
+	/**
+	 * 당일매매수수료 (원)
+	 */
+	commission: number;
+	/**
+	 * 당일매매세금 (원)
+	 */
+	tax: number;
 }
 
 /**
@@ -127,6 +135,8 @@ interface FilledOrdersResponse {
 		cntr_qty: string;
 		ord_stt: string;
 		ord_tm: string;
+		tdy_trde_cmsn: string;
+		tdy_trde_tax: string;
 	}>;
 }
 
@@ -240,6 +250,8 @@ export async function getFilledOrdersAction(
 			filledQty: Number.parseFloat(order.cntr_qty) || 0,
 			orderStatus: order.ord_stt,
 			orderTime: order.ord_tm,
+			commission: Number.parseFloat(order.tdy_trde_cmsn) || 0,
+			tax: Number.parseFloat(order.tdy_trde_tax) || 0,
 		}));
 
 		logger.info(

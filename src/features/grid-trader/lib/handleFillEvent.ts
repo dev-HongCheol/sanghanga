@@ -17,6 +17,8 @@ import { matchStockCode } from "./matchStockCode";
  * @param strategy - 해당 그리드 전략
  * @param fillPrice - 실제 체결가 (원)
  * @param fillTime - 체결 시각 (ISO 8601)
+ * @param commission - 당일매매수수료 (원, 키움 API ka10076 제공)
+ * @param tax - 당일매매세금 (원, 키움 API ka10076 제공)
  * @param useAdminClient - Admin Client 사용 여부 (Cron 등 백그라운드 작업용, 기본값: false)
  */
 export async function handleFillEvent(
@@ -24,6 +26,8 @@ export async function handleFillEvent(
 	strategy: GridStrategy,
 	fillPrice: number,
 	fillTime: string,
+	commission: number,
+	tax: number,
 	useAdminClient = false
 ): Promise<void> {
 	logger.info("HandleFillEvent", "체결 이벤트 처리 시작", {
@@ -36,21 +40,26 @@ export async function handleFillEvent(
 	await updateOrderStatus(filledOrder.order_id, "FILLED", fillTime, useAdminClient);
 
 	// 2. 체결 이벤트 DB 기록
+	// 손익 계산: 매도 시 (그리드 간격 × 수량) - 수수료 - 세금
+	// 참고: 매수 시 수수료는 별도로 저장하지 않으므로 매도 시 비용만 차감
 	const profitLoss =
 		filledOrder.order_type === "SELL"
-			? strategy.grid_gap * filledOrder.quantity // 매도 시 grid_gap * 수량 = 회당 수익
+			? strategy.grid_gap * filledOrder.quantity - commission - tax
 			: null;
 
-	await createFillEvent({
-		strategy_id: strategy.id,
-		stock_code: filledOrder.stock_code,
-		order_id: filledOrder.order_id,
-		fill_price: fillPrice,
-		fill_quantity: filledOrder.quantity,
-		fill_time: fillTime,
-		order_type: filledOrder.order_type,
-		profit_loss: profitLoss,
-	}, useAdminClient);
+	await createFillEvent(
+		{
+			strategy_id: strategy.id,
+			stock_code: filledOrder.stock_code,
+			order_id: filledOrder.order_id,
+			fill_price: fillPrice,
+			fill_quantity: filledOrder.quantity,
+			fill_time: fillTime,
+			order_type: filledOrder.order_type,
+			profit_loss: profitLoss,
+		},
+		useAdminClient
+	);
 
 	// 3. 카운터 주문 생성
 	if (filledOrder.order_type === "BUY") {
@@ -94,10 +103,13 @@ async function handleBuyFill(
 		matchStockCode(h.stockCode, filledOrder.stock_code)
 	);
 	const currentQty = holding?.quantity ?? 0;
-	if (currentQty - strategy.quantity_per_grid <= strategy.min_holding_limit) {
+	const sellableQty = Math.max(0, currentQty - strategy.min_holding_limit);
+	if (sellableQty < strategy.quantity_per_grid) {
 		logger.warn("HandleFillEvent", "보유 수량 부족으로 카운터 매도 주문 생략", {
 			currentQty,
+			sellableQty,
 			minHoldingLimit: strategy.min_holding_limit,
+			quantityPerGrid: strategy.quantity_per_grid,
 		});
 		return;
 	}
@@ -111,16 +123,19 @@ async function handleBuyFill(
 	});
 
 	if (result.success) {
-		await createOrder({
-			strategy_id: strategy.id,
-			stock_code: filledOrder.stock_code,
-			order_id: result.result.orderNo,
-			order_type: "SELL",
-			grid_price: sellPrice,
-			quantity: strategy.quantity_per_grid,
-			status: "PENDING",
-			filled_at: null,
-		}, useAdminClient);
+		await createOrder(
+			{
+				strategy_id: strategy.id,
+				stock_code: filledOrder.stock_code,
+				order_id: result.result.orderNo,
+				order_type: "SELL",
+				grid_price: sellPrice,
+				quantity: strategy.quantity_per_grid,
+				status: "PENDING",
+				filled_at: null,
+			},
+			useAdminClient
+		);
 		logger.info("HandleFillEvent", "카운터 매도 주문 완료", {
 			sellPrice,
 			orderNo: result.result.orderNo,
@@ -170,16 +185,19 @@ async function handleSellFill(
 	});
 
 	if (result.success) {
-		await createOrder({
-			strategy_id: strategy.id,
-			stock_code: filledOrder.stock_code,
-			order_id: result.result.orderNo,
-			order_type: "BUY",
-			grid_price: buyPrice,
-			quantity: strategy.quantity_per_grid,
-			status: "PENDING",
-			filled_at: null,
-		}, useAdminClient);
+		await createOrder(
+			{
+				strategy_id: strategy.id,
+				stock_code: filledOrder.stock_code,
+				order_id: result.result.orderNo,
+				order_type: "BUY",
+				grid_price: buyPrice,
+				quantity: strategy.quantity_per_grid,
+				status: "PENDING",
+				filled_at: null,
+			},
+			useAdminClient
+		);
 		logger.info("HandleFillEvent", "카운터 매수 주문 완료", {
 			buyPrice,
 			orderNo: result.result.orderNo,
