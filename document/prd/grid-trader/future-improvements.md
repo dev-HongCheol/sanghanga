@@ -6,54 +6,6 @@
 
 ---
 
-## 🚨 긴급 개선 (Critical)
-
-### 손익 계산 정확도 개선
-
-**우선순위**: 최상
-**예상 작업량**: 6줄 수정
-
-#### 현재 문제
-
-`handleFillEvent.ts:39-42` - 단순 추정 계산:
-```typescript
-const profitLoss =
-    filledOrder.order_type === "SELL"
-        ? strategy.grid_gap * filledOrder.quantity  // ❌ 수수료/세금 미포함
-        : null;
-```
-
-**누락된 비용**:
-- 거래 수수료 (양방향): ~0.015%
-- 증권거래세 (매도): 0.23%
-- 농어촌특별세 (매도): 0.15%
-- 호가 단위 조정으로 인한 실제 grid_gap 차이
-
-**오차율**: 약 4~5% 과대계상
-
-#### 해결 방법
-
-키움 API `ka10076`이 이미 제공하는 데이터 활용 (별도 API 호출 불필요):
-
-```json
-{
-    "cntr": [{
-        "tdy_trde_cmsn": "310",  // ⭐ 실제 수수료
-        "tdy_trde_tax": "284"     // ⭐ 실제 세금
-    }]
-}
-```
-
-#### 구현 체크리스트
-
-- [ ] `getOrders.action.ts` - `FilledOrder` 인터페이스에 `commission`, `tax` 추가
-- [ ] `getOrders.action.ts` - ka10076 응답 파싱 추가
-- [ ] `handleFillEvent.ts` - 정확한 손익 계산: `(매도가 - 매수가) × 수량 - 수수료 - 세금`
-- [ ] `pollFills.ts` - 파라미터 전달
-- [ ] (Optional) DB 스키마 - `sh_fill_events`에 `commission`, `tax` 컬럼 추가
-
----
-
 ## 🔄 Phase 1.7: 실시간 갱신 완성
 
 ### 주문/체결 실시간 갱신 (SSE 확장)

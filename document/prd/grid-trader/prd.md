@@ -7,7 +7,7 @@
 | **작성일** | 2026-05-01 |
 | **작성자** | User |
 | **상태** | 🚧 구현중 |
-| **버전** | v1.6.3 |
+| **버전** | v1.6.4 |
 | **우선순위** | Medium |
 | **체크리스트** | [checklist.md](./checklist.md) |
 | **구현 패턴** | [implementation-patterns.md](./implementation-patterns.md) |
@@ -227,7 +227,6 @@ pnpm dlx shadcn@latest add form input button card table badge switch separator a
 향후 개선 및 확장 계획은 별도 문서를 참조하세요: **[future-improvements.md](./future-improvements.md)**
 
 **주요 개선 항목**:
-- 🚨 **손익 계산 정확도 개선** (Critical) - 수수료/세금 포함 정확한 계산
 - 주문/체결 실시간 갱신 (SSE 확장)
 - 실시간 잔고 패널 개선 (오늘의 손익/전체 손익 표시)
 - 체결 히스토리 페이지네이션
@@ -239,7 +238,7 @@ pnpm dlx shadcn@latest add form input button card table badge switch separator a
 
 ## 🚨 리스크 및 주의사항
 
-- **손익 계산 부정확성 (v1.6.1 발견)**: 현재 체결 히스토리의 손익은 수수료/세금을 미포함하여 약 4~5% 과대계상됨. 실제 손익은 키움 HTS에서 확인 필요. 정확한 계산을 위한 개선 방안은 [향후 개선 문서](./future-improvements.md) 참조
+- **손익 계산**: 체결 히스토리의 손익은 키움 API(ka10076)가 제공하는 실제 수수료/세금을 반영하여 계산됨 (v1.6.4부터 적용)
 - **Core 물량 보호**: `minHoldingLimit` 이하 매도 금지는 코드 레벨에서 강제
 - **예수금 부족**: 매수 주문 전 반드시 잔고 확인
 - **계좌 비밀번호**: `.env.local` 환경변수로만 관리
@@ -270,3 +269,4 @@ pnpm dlx shadcn@latest add form input button card table badge switch separator a
 | v1.6.1 | 2026-05-15 | 향후 개선사항 별도 문서 분리, 손익 계산 부정확성 발견, UI 개선 제안 |
 | v1.6.2 | 2026-05-15 | bug-fixes.md 삭제 및 핵심 패턴 문서화 (구현 패턴 섹션 추가) |
 | v1.6.3 | 2026-05-15 | 구현 패턴을 implementation-patterns.md로 분리, PRD 코드 제거 및 간소화 |
+| v1.6.4 | 2026-05-16 | 손익 계산 정확도 개선 완료 (수수료/세금 반영) |
