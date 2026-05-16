@@ -9,13 +9,20 @@
  * **서버 재시작 대응**:
  * - 활성 전략인데 미체결 주문이 없으면 자동으로 초기 그리드 배치 실행
  * - 서버 장애 후 재구동 시에도 자동으로 주문이 걸리도록 보장
+ *
+ * **동시 실행 방지**:
+ * - DB 기반 mutex (PostgreSQL advisory lock) 사용
+ * - 멀티 프로세스 환경에서도 중복 실행 방지
  */
 
 import { getActiveStrategies, getPendingOrders } from "@/entities/grid-trader";
-import { logger } from "@/shared/lib/logger";
+import type { GridOrder, GridStrategy } from "@/entities/grid-trader";
 import { getPrice } from "@/shared/lib/cache/price-cache";
-import { rebalanceGrid } from "../rebalanceGrid";
+import { logger } from "@/shared/lib/logger";
+import { withMutex } from "@/shared/lib/mutex/db-mutex";
+import { getTickSize } from "../adjustToTickSize";
 import { deployGrid } from "../deployGrid";
+import { rebalanceGrid } from "../rebalanceGrid";
 
 /**
  * 그리드 이탈 여부 체크
@@ -25,15 +32,56 @@ import { deployGrid } from "../deployGrid";
  * - 현재가 > 최상단 그리드 가격 (모든 매도 주문 위로)
  * - 현재가 < 최하단 그리드 가격 (모든 매수 주문 아래로)
  *
+ * **보유 수량 부족 대응**:
+ * - 매도 주문이 없는 경우 (보유 수량 부족으로 못 걸린 경우)
+ * - 이론적 최대값 = 최고 매수가 + gap * (upper_grid_count + 1)
+ * - 이를 상한으로 사용하여 불필요한 리밸런싱 방지
+ *
  * @param currentPrice - 현재가
- * @param gridPrices - 미체결 주문의 그리드 가격 배열
+ * @param pendingOrders - 미체결 주문 배열
+ * @param strategy - 전략 설정
  * @returns 이탈 여부
  */
-function isGridOutOfRange(currentPrice: number, gridPrices: number[]): boolean {
-	if (gridPrices.length === 0) return false;
+function isGridOutOfRange(
+	currentPrice: number,
+	pendingOrders: GridOrder[],
+	strategy: GridStrategy
+): boolean {
+	if (pendingOrders.length === 0) return false;
 
-	const maxPrice = Math.max(...gridPrices);
-	const minPrice = Math.min(...gridPrices);
+	const allPrices = pendingOrders.map((o) => o.grid_price);
+	const minPrice = Math.min(...allPrices);
+
+	// 매도 주문이 있는지 확인
+	const sellOrders = pendingOrders.filter((o) => o.order_type === "SELL");
+
+	let maxPrice: number;
+	if (sellOrders.length > 0) {
+		// 매도 주문이 있으면 실제 최대값 사용
+		maxPrice = Math.max(...sellOrders.map((o) => o.grid_price));
+	} else {
+		// 매도 주문이 없으면 (보유 수량 부족), 이론적 최대값 계산
+		const maxBuyPrice = Math.max(...allPrices);
+
+		// 이론적으로 매도 주문이 걸렸어야 할 최대 위치 계산
+		const baseTick = getTickSize(maxBuyPrice);
+		const adjustedGap = Math.round(strategy.grid_gap / baseTick) * baseTick;
+
+		// 최고 매수가 + (gap * upper_grid_count) + 안전 마진(gap)
+		maxPrice = maxBuyPrice + adjustedGap * (strategy.upper_grid_count + 1);
+
+		logger.info(
+			"CronCheckRebalance",
+			"매도 주문 없음 - 이론적 최대값 사용",
+			{
+				maxBuyPrice,
+				theoreticalMax: maxPrice,
+				upperGridCount: strategy.upper_grid_count,
+				adjustedGap,
+			},
+			true
+		);
+	}
 
 	// 현재가가 그리드 범위를 벗어남
 	if (currentPrice > maxPrice || currentPrice < minPrice) {
@@ -44,10 +92,9 @@ function isGridOutOfRange(currentPrice: number, gridPrices: number[]): boolean {
 }
 
 /**
- * 자동 리밸런싱 체크 비즈니스 로직
- * @description Cron과 Route Handler에서 공용으로 사용
+ * 리밸런싱 체크 내부 로직 (mutex 없이)
  */
-export async function checkRebalanceLogic() {
+async function checkRebalanceInternal() {
 	try {
 		// 활성 전략 목록 조회
 		const activeStrategies = await getActiveStrategies(true);
@@ -86,14 +133,10 @@ export async function checkRebalanceLogic() {
 
 				// 2-1. 미체결 주문이 없으면 자동으로 그리드 배치 (서버 재시작 대응)
 				if (pendingOrders.length === 0) {
-					logger.info(
-						"CronCheckRebalance",
-						"활성 전략인데 주문 없음 - 자동 그리드 배치 실행",
-						{
-							strategyId: strategy.id,
-							stockCode: strategy.stock_code,
-						}
-					);
+					logger.info("CronCheckRebalance", "활성 전략인데 주문 없음 - 자동 그리드 배치 실행", {
+						strategyId: strategy.id,
+						stockCode: strategy.stock_code,
+					});
 
 					try {
 						const deployResult = await deployGrid(strategy, true);
@@ -133,8 +176,7 @@ export async function checkRebalanceLogic() {
 				}
 
 				// 3. 그리드 이탈 여부 체크
-				const gridPrices = pendingOrders.map((o) => o.grid_price);
-				const isOutOfRange = isGridOutOfRange(priceInfo.currentPrice, gridPrices);
+				const isOutOfRange = isGridOutOfRange(priceInfo.currentPrice, pendingOrders, strategy);
 
 				if (!isOutOfRange) {
 					results.push({
@@ -147,6 +189,7 @@ export async function checkRebalanceLogic() {
 				}
 
 				// 4. 리밸런싱 실행
+				const gridPrices = pendingOrders.map((o) => o.grid_price);
 				logger.info("CronCheckRebalance", "그리드 이탈 감지 - 리밸런싱 시작", {
 					strategyId: strategy.id,
 					stockCode: strategy.stock_code,
@@ -214,4 +257,26 @@ export async function checkRebalanceLogic() {
 			error: error instanceof Error ? error.message : "리밸런싱 체크 중 오류 발생",
 		};
 	}
+}
+
+/**
+ * 자동 리밸런싱 체크 비즈니스 로직
+ * @description Cron과 Route Handler에서 공용으로 사용
+ *
+ * **동시 실행 방지**: DB 기반 mutex로 멀티 프로세스 환경에서도 중복 실행 방지
+ */
+export async function checkRebalanceLogic() {
+	const result = await withMutex("grid_rebalance_check", checkRebalanceInternal, 100);
+
+	if (result === null) {
+		// 락 획득 실패 (다른 프로세스가 실행 중)
+		logger.warn("CronCheckRebalance", "이미 다른 프로세스에서 실행 중 - 스킵", undefined, true);
+		return {
+			success: true,
+			message: "이미 실행 중",
+			rebalanced: 0,
+		};
+	}
+
+	return result;
 }
