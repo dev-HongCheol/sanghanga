@@ -6,34 +6,6 @@
 
 ---
 
-## 🔄 Phase 1.7: 실시간 갱신 완성
-
-### 주문/체결 실시간 갱신 (SSE 확장)
-
-**우선순위**: 높음
-**현황**: `broadcastOrders`, `broadcastFillEvent` 선언만 있고 연결 안 됨
-**문제**: `router.refresh()` 의존 → 깜빡임, 자동 갱신 안 됨
-
-#### 구현 방법
-
-1. Zustand Store 생성
-   - [ ] `shared/stores/order-store.ts` - 주문 목록 전역 상태
-
-2. SSE 연결
-   - [ ] `checkFills.ts` - 체결 감지 후 `broadcastOrders()` 호출
-   - [ ] `SSEProvider.tsx` - `orders` 이벤트 리스너 추가
-
-3. 컴포넌트 전환
-   - [ ] `RealtimeActiveOrdersTable.tsx` - Zustand store 구독
-   - [ ] `page.tsx` - SSR props를 store 초기값으로 활용
-
-4. 정리
-   - [ ] `router.refresh()` 제거
-
-**기대 효과**: 깜빡임 없는 부드러운 테이블 갱신, 체결 즉시 자동 반영
-
----
-
 ## 📊 Phase 2: UI 개선 및 모니터링
 
 ### 1. 실시간 잔고 패널 개선
@@ -93,7 +65,6 @@ const totalCount = await getFillEventsCount(strategyId);
 - [ ] Shadcn Pagination 컴포넌트 추가
 - [ ] URL 쿼리 파라미터 처리 (`?page=1&limit=20`)
 - [ ] (Optional) 날짜 필터 (오늘, 이번 주, 이번 달, 전체)
-- [ ] (Optional) CSV 다운로드
 
 ### 3. 알림 및 모니터링
 

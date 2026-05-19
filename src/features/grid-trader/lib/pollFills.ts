@@ -1,6 +1,7 @@
 import { cancelOrders, getActiveStrategies, getPendingOrders } from "@/entities/grid-trader";
 import type { GridStrategy } from "@/entities/grid-trader";
 import { logger } from "@/shared/lib/logger";
+import { broadcastOrders } from "@/shared/lib/sse/sse-manager";
 import { getFilledOrdersAction, getPendingOrdersAction } from "../api/getOrders.action";
 import { handleFillEvent } from "./handleFillEvent";
 
@@ -91,6 +92,7 @@ async function pollFillsForStrategy(strategy: GridStrategy): Promise<number> {
 	}
 
 	// 2. 취소된 주문 동기화 (키움 앱에서 수동 취소 감지)
+	let hasCancellation = false;
 	if (apiPendingResult.success) {
 		// 키움 API 미체결 주문번호 Set (앞자리 0 정규화)
 		const apiPendingSet = new Set(apiPendingResult.orders.map((o) => normalizeOrderNo(o.orderNo)));
@@ -109,6 +111,7 @@ async function pollFillsForStrategy(strategy: GridStrategy): Promise<number> {
 
 			try {
 				await cancelOrders(cancelledOrderIds, true);
+				hasCancellation = true;
 				logger.info("PollFills", "취소된 주문 DB 동기화 완료", {
 					count: cancelledOrderIds.length,
 				});
@@ -122,6 +125,23 @@ async function pollFillsForStrategy(strategy: GridStrategy): Promise<number> {
 		logger.warn("PollFills", "키움 API 미체결 조회 실패 - 동기화 스킵", {
 			error: apiPendingResult.error,
 		});
+	}
+
+	// 3. 주문 상태가 변경되었으면 SSE 브로드캐스트
+	if (processed > 0 || hasCancellation) {
+		try {
+			// 최신 주문 목록 조회 (체결/취소 후 상태)
+			const updatedOrders = await getPendingOrders(strategy.id, true);
+			await broadcastOrders(strategy.id, updatedOrders);
+			logger.info("PollFills", "주문 목록 브로드캐스트", {
+				strategyId: strategy.id,
+				orderCount: updatedOrders.length,
+			});
+		} catch (err) {
+			logger.error("PollFills", "주문 브로드캐스트 실패", {
+				error: err instanceof Error ? err.message : String(err),
+			});
+		}
 	}
 
 	return processed;

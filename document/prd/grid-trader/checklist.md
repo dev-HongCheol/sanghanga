@@ -1,6 +1,6 @@
 # Grid Trader 구현 체크리스트
 
-> 상태: 🚧 구현중 | PRD: [prd.md](./prd.md) | 구현 패턴: [implementation-patterns.md](./implementation-patterns.md) | 향후 개선: [future-improvements.md](./future-improvements.md) | 버전: v1.6.3
+> 상태: 🚧 구현중 | PRD: [prd.md](./prd.md) | 구현 패턴: [implementation-patterns.md](./implementation-patterns.md) | 향후 개선: [future-improvements.md](./future-improvements.md) | 버전: v1.6.5
 
 ## 📁 파일 구조 및 핵심 역할
 
@@ -86,7 +86,7 @@
 #### 실시간 UI Components (3개)
 - [x] `ui/RealtimePriceDisplay.tsx` — 실시간 현재가 표시 (Zustand price-store 구독)
 - [x] `ui/RealtimeBalanceDisplay.tsx` — 실시간 잔고 표시 (Zustand balance-store 구독)
-- [x] `ui/RealtimeActiveOrdersTable.tsx` — 실시간 주문 테이블 (현재가만 Zustand 구독)
+- [x] `ui/RealtimeActiveOrdersTable.tsx` — 실시간 주문 테이블 (Zustand order-store + price-store 구독, v1.6.5)
 
 #### Providers
 - [x] `providers/SSEProvider.tsx` — SSE 연결 Provider (단일 EventSource → Zustand 업데이트)
@@ -119,6 +119,7 @@
 #### Zustand Stores
 - [x] `stores/price-store.ts` — 현재가 전역 상태 (Zustand, SSE로 업데이트)
 - [x] `stores/balance-store.ts` — 잔고 전역 상태 (Zustand, SSE로 업데이트)
+- [x] `stores/order-store.ts` — 주문 전역 상태 (Zustand, SSE로 업데이트, v1.6.5)
 
 ---
 
@@ -169,6 +170,12 @@
 - ✅ 클라이언트 폴링 제거 (SSEProvider로 대체)
 - ✅ Cron 스케줄러 (5개 Job, 장시간 제어)
 
+### Phase 1.7 - 실시간 갱신 완성
+- ✅ order-store 추가 (주문 전역 상태)
+- ✅ broadcastOrders 연결 (체결/배치/리밸런싱 후)
+- ✅ RealtimeActiveOrdersTable order-store 구독
+- ✅ router.refresh() 제거 (깜빡임 없는 UI)
+
 ### Phase 1.5 - 체결 감지 & 자동 리밸런싱
 - ✅ 체결 감지 Cron (2초 주기, ka10075/ka10076)
 - ✅ 카운터 주문 자동 생성 (매수 체결 → 위 매도, 매도 체결 → 아래 매수)
@@ -193,12 +200,6 @@
 **상세 계획 및 구현 가이드**: [future-improvements.md](./future-improvements.md)
 
 ### 우선순위 요약
-
-**🚨 긴급 (Critical)**:
-- [ ] 손익 계산 정확도 개선 - 수수료/세금 포함 정확한 계산 (6줄 수정)
-
-**⭐ 높음 (Phase 1.7)**:
-- [ ] 주문/체결 실시간 갱신 - SSE 확장, `router.refresh()` 제거
 
 **📊 중간 (Phase 2)**:
 - [ ] 실시간 잔고 패널 개선 - 오늘의 손익/전체 손익 표시

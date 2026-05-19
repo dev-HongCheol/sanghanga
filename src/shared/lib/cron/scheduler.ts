@@ -14,6 +14,10 @@
  * - 장시간(평일 09:00~18:00)만 실행 (로컬 시간 기준)
  * - 정규장(09:00~15:30) + 시간외 거래(15:40~18:00) 모두 포함
  * - 미체결 주문 정리는 장시간 체크 없이 항상 실행
+ *
+ * **서버 재시작 대응**:
+ * - 서버 시작 시 즉시 미체결 주문 정리 실행 (백그라운드)
+ * - 8시 이후 재시작 시 전날 주문이 당일 주문으로 오인되는 문제 방지
  */
 
 import { checkFillsLogic } from "@/features/grid-trader/lib/cron/checkFills";
@@ -180,6 +184,34 @@ export function startCronScheduler(): void {
 		undefined,
 		true
 	);
+
+	// 서버 시작 시 즉시 미체결 주문 정리 실행 (8시 이후 재시작 대응)
+	// await 없이 비동기 실행 (서버 시작 블로킹 방지)
+	logger.info("CronScheduler", "서버 시작 시 미체결 주문 정리 실행...", undefined, true);
+	cleanupStaleOrdersLogic()
+		.then((result) => {
+			if (result.cancelled > 0) {
+				logger.info(
+					"CronScheduler",
+					`서버 시작 시 미체결 주문 정리 완료: ${result.cancelled}건 CANCELLED 처리`,
+					undefined,
+					true
+				);
+			} else {
+				logger.info(
+					"CronScheduler",
+					"서버 시작 시 미체결 주문 정리 완료: 정리할 주문 없음",
+					undefined,
+					true
+				);
+			}
+		})
+		.catch((error) => {
+			logger.error("CronScheduler", "서버 시작 시 미체결 주문 정리 실패", {
+				error: error instanceof Error ? error.message : String(error),
+				stack: error instanceof Error ? error.stack : undefined,
+			});
+		});
 
 	// Cron Jobs 시작
 	startPriceSyncCron();

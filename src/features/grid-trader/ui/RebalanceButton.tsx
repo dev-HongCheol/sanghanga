@@ -2,7 +2,6 @@
 
 import { Button } from "@/shared/ui/button";
 import { RefreshCw } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 import { rebalanceGridAction } from "../api/rebalanceGrid.action";
@@ -21,7 +20,6 @@ interface RebalanceButtonProps {
  * - 활성 전략만 실행 가능
  */
 export function RebalanceButton({ strategyId, isActive }: RebalanceButtonProps) {
-	const router = useRouter();
 	const [isLoading, setIsLoading] = useState(false);
 
 	const handleRebalance = async () => {
@@ -38,7 +36,6 @@ export function RebalanceButton({ strategyId, isActive }: RebalanceButtonProps) 
 				toast.success("리밸런싱 완료", {
 					description: `취소: ${result.result.cancelled}건 | 신규 배치: ${result.result.placed}건`,
 				});
-				router.refresh(); // Server Component 갱신
 			} else {
 				toast.error("리밸런싱 실패", {
 					description: result.error,

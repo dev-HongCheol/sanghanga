@@ -14,7 +14,9 @@
  */
 
 import type { AccountBalance, CurrentPrice } from "@/features/grid-trader";
+import type { GridOrder } from "@/entities/grid-trader";
 import { useBalanceStore } from "@/shared/stores/balance-store";
+import { useOrderStore } from "@/shared/stores/order-store";
 import { usePriceStore } from "@/shared/stores/price-store";
 import { type ReactNode, useEffect, useRef } from "react";
 
@@ -42,6 +44,7 @@ export function SSEProvider({ children }: SSEProviderProps) {
 			console.log("[SSE] 연결 성공");
 			useBalanceStore.getState().setConnected(true);
 			usePriceStore.getState().setConnected(true);
+			useOrderStore.getState().setConnected(true);
 		};
 
 		// 연결 오류
@@ -49,6 +52,7 @@ export function SSEProvider({ children }: SSEProviderProps) {
 			console.error("[SSE] 연결 오류:", error);
 			useBalanceStore.getState().setConnected(false);
 			usePriceStore.getState().setConnected(false);
+			useOrderStore.getState().setConnected(false);
 		};
 
 		// 연결 확인 이벤트
@@ -81,6 +85,16 @@ export function SSEProvider({ children }: SSEProviderProps) {
 			}
 		});
 
+		// 주문 이벤트
+		eventSource.addEventListener("orders", (event: MessageEvent) => {
+			try {
+				const data: { strategyId: string; orders: GridOrder[] } = JSON.parse(event.data);
+				useOrderStore.getState().setOrders(data.strategyId, data.orders);
+			} catch (error) {
+				console.error("[SSE] 주문 파싱 오류:", error);
+			}
+		});
+
 		// Heartbeat 이벤트 (연결 유지)
 		eventSource.addEventListener("heartbeat", () => {
 			// Do nothing, just keep connection alive
@@ -92,6 +106,7 @@ export function SSEProvider({ children }: SSEProviderProps) {
 			console.log("[SSE] 연결 종료");
 			useBalanceStore.getState().setConnected(false);
 			usePriceStore.getState().setConnected(false);
+			useOrderStore.getState().setConnected(false);
 		};
 	}, []);
 

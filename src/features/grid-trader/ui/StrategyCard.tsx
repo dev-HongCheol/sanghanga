@@ -6,7 +6,6 @@ import { Button } from "@/shared/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/shared/ui/card";
 import { Switch } from "@/shared/ui/switch";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 import { deployGridAction } from "../api/deployGrid.action";
@@ -23,7 +22,6 @@ interface StrategyCardProps {
  * 종목명, 그리드 설정, 활성/비활성 토글, 상세 링크를 표시한다.
  */
 export function StrategyCard({ strategy }: StrategyCardProps) {
-	const router = useRouter();
 	const [isActive, setIsActive] = useState(strategy.is_active);
 	const [toggling, setToggling] = useState(false);
 	const [deploying, setDeploying] = useState(false);
@@ -45,8 +43,6 @@ export function StrategyCard({ strategy }: StrategyCardProps) {
 				description: "그리드 주문을 배치합니다...",
 			});
 			await handleDeployGrid();
-		} else {
-			router.refresh();
 		}
 	}
 
@@ -59,7 +55,6 @@ export function StrategyCard({ strategy }: StrategyCardProps) {
 			toast.success("그리드 배치 완료", {
 				description: `${result.result?.placed}개 주문 배치 완료, ${result.result?.failed}개 실패`,
 			});
-			router.refresh();
 		} else {
 			toast.error("그리드 배치 실패", {
 				description: result.error,

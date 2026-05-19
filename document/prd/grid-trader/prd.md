@@ -7,7 +7,7 @@
 | **작성일** | 2026-05-01 |
 | **작성자** | User |
 | **상태** | 🚧 구현중 |
-| **버전** | v1.6.4 |
+| **버전** | v1.6.6 |
 | **우선순위** | Medium |
 | **체크리스트** | [checklist.md](./checklist.md) |
 | **구현 패턴** | [implementation-patterns.md](./implementation-patterns.md) |
@@ -70,7 +70,7 @@
 | 잔고 동기화 | kt00018 (계좌평가잔고내역) | 3초 | 항상 (ENABLE_CRON=true) | 계좌 잔고/보유 수량 조회 → 메모리 캐시 + SSE push |
 | 체결 감지 | ka10075/ka10076 | 2초 | **장중만** (평일 09:00~18:00) | 체결 이벤트 감지 → DB 저장 + 카운터 주문 생성 |
 | 리밸런싱 체크 | - | **09:00~10:00 KST 1분 / 이후 10분** | **장중만** (평일 09:00~18:00) | 그리드 이탈 감지 → 자동 리밸런싱 실행 |
-| 미체결 주문 정리 | - | 매일 08:00 (평일) | 항상 (장시간 무관) | 전날 PENDING 주문 → CANCELLED 일괄 처리 |
+| 미체결 주문 정리 | - | 매일 08:00 (평일) + **서버 시작 시** | 항상 (장시간 무관) | 전날 PENDING 주문 → CANCELLED 일괄 처리 (8시 이후 재시작 대응) |
 
 **장시간 제어** (로컬 시간 기준):
 - 평일 09:00~18:00 (정규장 + 시간외 거래)
@@ -92,14 +92,13 @@
 | `price` | `broadcastPrice` | ✅ 있음 | 정상 |
 | `balance` | `broadcastBalance` | ✅ 있음 | 정상 |
 | `heartbeat` | `sendHeartbeat` | ✅ 있음 | 정상 |
-| `orders` | `broadcastOrders` | ❌ 없음 | 미연결 |
-| `fill` | `broadcastFillEvent` | ❌ 없음 | 미연결 |
+| `orders` | `broadcastOrders` | ✅ 있음 | 정상 (v1.6.5) |
 
-**주문/체결 데이터 갱신 현황 (미완성)**:
-- 상세 페이지 최초 진입 시 Server Component에서 DB 조회 후 props로 전달
-- 이후 주문 변경(배치/체결)은 `router.refresh()` 수동 호출로만 갱신
-- Cron이 체결 감지 후 카운터 주문 생성해도 UI 자동 갱신 안 됨
-- `router.refresh()` 문제점: 완료 시점 알 수 없음, 테이블 레이아웃 점프, 로딩 피드백 없음
+**주문 데이터 실시간 갱신** (v1.6.5 완료):
+- Zustand `order-store` 추가 (전략별 주문 목록 전역 상태)
+- 체결/배치/리밸런싱 후 `broadcastOrders()` 자동 호출
+- `RealtimeActiveOrdersTable`이 `order-store` 구독하여 실시간 갱신
+- `router.refresh()` 제거 완료 → 깜빡임 없는 부드러운 UI
 
 **키움 API 호출량** (활성 그리드 N개):
 - 초당 N + 0.83회 (가격 N회 + 잔고 0.33회 + 체결 0.5회)
@@ -270,3 +269,5 @@ pnpm dlx shadcn@latest add form input button card table badge switch separator a
 | v1.6.2 | 2026-05-15 | bug-fixes.md 삭제 및 핵심 패턴 문서화 (구현 패턴 섹션 추가) |
 | v1.6.3 | 2026-05-15 | 구현 패턴을 implementation-patterns.md로 분리, PRD 코드 제거 및 간소화 |
 | v1.6.4 | 2026-05-16 | 손익 계산 정확도 개선 완료 (수수료/세금 반영) |
+| v1.6.5 | 2026-05-16 | 실시간 갱신 완성 (order-store, broadcastOrders 연결, router.refresh 제거) |
+| v1.6.6 | 2026-05-18 | 서버 시작 시 미체결 주문 정리 추가 (8시 이후 재시작 대응) |

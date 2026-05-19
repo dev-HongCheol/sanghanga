@@ -1,6 +1,7 @@
-import { createOrder } from "@/entities/grid-trader";
+import { createOrder, getPendingOrders } from "@/entities/grid-trader";
 import type { GridStrategy } from "@/entities/grid-trader";
 import { logger } from "@/shared/lib/logger";
+import { broadcastOrders } from "@/shared/lib/sse/sse-manager";
 import { getAccountBalanceAction } from "../api/getAccountBalance.action";
 import { getCurrentPriceAction } from "../api/getCurrentPrice.action";
 import { placeOrderAction } from "../api/placeOrder.action";
@@ -181,5 +182,20 @@ export async function deployGrid(
 	}
 
 	logger.info("DeployGrid", "그리드 배치 완료", { strategyId: strategy.id, placed, failed });
+
+	// 최신 주문 목록 브로드캐스트
+	try {
+		const updatedOrders = await getPendingOrders(strategy.id, useAdminClient);
+		await broadcastOrders(strategy.id, updatedOrders);
+		logger.info("DeployGrid", "주문 목록 브로드캐스트", {
+			strategyId: strategy.id,
+			orderCount: updatedOrders.length,
+		});
+	} catch (err) {
+		logger.error("DeployGrid", "주문 브로드캐스트 실패", {
+			error: err instanceof Error ? err.message : String(err),
+		});
+	}
+
 	return { placed, failed };
 }

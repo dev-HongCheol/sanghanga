@@ -1,6 +1,7 @@
 import { cancelOrders, getPendingOrders } from "@/entities/grid-trader";
 import type { GridStrategy } from "@/entities/grid-trader";
 import { logger } from "@/shared/lib/logger";
+import { broadcastOrders } from "@/shared/lib/sse/sse-manager";
 import { cancelOrderAction } from "../api/cancelOrder.action";
 import { deployGrid } from "./deployGrid";
 
@@ -72,6 +73,20 @@ export async function rebalanceGrid(
 		cancelled: cancelledOrderIds.length,
 		...deployResult,
 	});
+
+	// 5. 최신 주문 목록 브로드캐스트
+	try {
+		const updatedOrders = await getPendingOrders(strategy.id, useAdminClient);
+		await broadcastOrders(strategy.id, updatedOrders);
+		logger.info("RebalanceGrid", "주문 목록 브로드캐스트", {
+			strategyId: strategy.id,
+			orderCount: updatedOrders.length,
+		});
+	} catch (err) {
+		logger.error("RebalanceGrid", "주문 브로드캐스트 실패", {
+			error: err instanceof Error ? err.message : String(err),
+		});
+	}
 
 	return {
 		cancelled: cancelledOrderIds.length,

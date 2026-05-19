@@ -91,7 +91,11 @@ export default async function GridTraderDetailPage({ params }: Props) {
 								</div>
 							</CardHeader>
 							<CardContent className="p-0">
-								<RealtimeActiveOrdersTable orders={pendingOrders} stockCode={strategy.stock_code} />
+								<RealtimeActiveOrdersTable
+									strategyId={strategyId}
+									stockCode={strategy.stock_code}
+									initialOrders={pendingOrders}
+								/>
 							</CardContent>
 						</Card>
 
