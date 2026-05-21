@@ -15,10 +15,31 @@ import { cancelStalePendingOrders } from "@/entities/grid-trader";
 import { logger } from "@/shared/lib/logger";
 
 /**
+ * 성공 응답 타입
+ */
+interface CleanupSuccessResult {
+	success: true;
+	cancelled: number;
+}
+
+/**
+ * 실패 응답 타입
+ */
+interface CleanupErrorResult {
+	success: false;
+	error: string;
+}
+
+/**
+ * 응답 타입
+ */
+type CleanupResult = CleanupSuccessResult | CleanupErrorResult;
+
+/**
  * 미체결 주문 정리 비즈니스 로직
  * @description Cron과 Route Handler에서 공용으로 사용
  */
-export async function cleanupStaleOrdersLogic() {
+export async function cleanupStaleOrdersLogic(): Promise<CleanupResult> {
 	try {
 		const cancelled = await cancelStalePendingOrders(true);
 

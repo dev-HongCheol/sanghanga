@@ -6,87 +6,138 @@
 
 ---
 
-## 1. 그리드 이탈 판정 (리밸런싱 트리거)
+## 1. 그리드 이탈 판정 (리밸런싱 트리거) - v1.6.7
 
 ### 필요성
 
-매도 주문이 없을 때 단순히 `Math.max(...[])`를 사용하면 `-Infinity`가 반환되어 **무한 리밸런싱**이 발생합니다.
+주문 불균형(매수 또는 매도 주문 0개)이 발생했을 때, **체결로 인한 것**인지 **자원 부족**인지 구분하지 않으면 **무한 리밸런싱**이 발생합니다.
 
-### 발생 시나리오
+### 발생 시나리오 1: 자원 부족 (보유 수량)
 
 ```
 전략 설정:
 - minHoldingLimit: 10주
-- 보유 수량: 10주 (매도 불가 상태)
-- upper_grid_count: 3개
-- grid_gap: 5,000원
+- 현재 보유: 10주 (Core 물량만 남음)
+- sellableQty: 0주
 
 현재 그리드:
 - 매수: 295,000원, 290,000원, 285,000원 (3개)
-- 매도: 없음 (보유 수량 부족)
+- 매도: 없음 (보유 수량 부족으로 못 걸림)
 - 현재가: 298,000원
 ```
 
-**버그 발생 과정**:
-1. `isGridOutOfRange()`에서 `maxPrice` 계산 시도
-2. 매도 주문이 없어 `Math.max(...[])` = `-Infinity`
-3. `currentPrice (298,000) > maxPrice (-Infinity)` → 항상 `true`
-4. 리밸런싱 실행 → 미체결 취소 → 재배치
-5. 다시 매도 주문 못 걸림 → 1분 후 다시 체크 → **무한 반복**
+**무한 리밸런싱 발생**:
+1. 매도 주문 0개 감지 → 리밸런싱 트리거
+2. 미체결 취소 → 재배치
+3. 여전히 `sellableQty = 0` → 매도 주문 0개
+4. 10분 후 다시 체크 → **무한 반복**
 
-### 올바른 패턴
+### 발생 시나리오 2: 체결로 인한 주문 부재
+
+```
+전략 설정:
+- minHoldingLimit: 10주
+- 현재 보유: 15주
+- sellableQty: 5주 (매도 가능)
+
+현재 그리드:
+- 매수: [34,000, 33,000, 32,000] (3개)
+- 매도: [] (3개 모두 체결됨)
+- 현재가: 35,650원
+```
+
+**리밸런싱 필요**:
+- 매도 주문 0개지만 `sellableQty = 5주` → 체결로 인한 부재
+- 즉시 리밸런싱하여 새 매도 주문 생성 필요
+
+### 올바른 패턴 (v1.6.7)
 
 ```typescript
+interface BalanceInfo {
+  availableDeposit: number;  // 예수금
+  totalQty: number;          // 총 보유 수량
+}
+
 function isGridOutOfRange(
   currentPrice: number,
   pendingOrders: GridOrder[],
-  strategy: GridStrategy
+  strategy: GridStrategy,
+  balance: BalanceInfo
 ): boolean {
   if (pendingOrders.length === 0) return false;
 
-  const allPrices = pendingOrders.map((o) => o.grid_price);
-  const minPrice = Math.min(...allPrices);
-
-  // 매도 주문이 있는지 확인
+  const buyOrders = pendingOrders.filter((o) => o.order_type === "BUY");
   const sellOrders = pendingOrders.filter((o) => o.order_type === "SELL");
 
-  let maxPrice: number;
-  if (sellOrders.length > 0) {
-    // ✅ 매도 주문이 있으면 실제 최대값 사용
-    maxPrice = Math.max(...sellOrders.map((o) => o.grid_price));
-  } else {
-    // ✅ 매도 주문이 없으면 이론적 최대값 계산
-    const maxBuyPrice = Math.max(...allPrices);
+  // ✅ 매도 주문 0개: 자원 체크
+  if (sellOrders.length === 0) {
+    const sellableQty = Math.max(0, balance.totalQty - strategy.min_holding_limit);
 
-    // 호가 단위로 조정된 grid_gap 계산
-    const baseTick = getTickSize(maxBuyPrice);
-    const adjustedGap = Math.round(strategy.grid_gap / baseTick) * baseTick;
-
-    // 이론적 최대값 = 최고 매수가 + gap * (upper_grid_count + 1)
-    // 예: 295,000 + 5,000 * (3 + 1) = 315,000
-    maxPrice = maxBuyPrice + adjustedGap * (strategy.upper_grid_count + 1);
-
-    logger.info("매도 주문 없음 - 이론적 최대값 사용", {
-      maxBuyPrice,
-      theoreticalMax: maxPrice,
-      upperGridCount: strategy.upper_grid_count,
-      adjustedGap,
-    });
+    if (sellableQty > 0) {
+      // 매도 가능 수량 있음 → 체결로 인한 부재 → 리밸런싱 필요
+      logger.info("매도 주문 없음 (체결) - 리밸런싱 필요", {
+        currentPrice,
+        sellableQty,
+        buyOrderCount: buyOrders.length,
+      });
+      return true;
+    } else {
+      // 보유 수량 부족 → 자원 부족 → 리밸런싱 불필요
+      logger.info("매도 주문 없음 (자원 부족) - 리밸런싱 스킵", {
+        totalQty: balance.totalQty,
+        minHoldingLimit: strategy.min_holding_limit,
+      });
+      return false;
+    }
   }
 
-  // 현재가가 그리드 범위를 벗어남
+  // ✅ 매수 주문 0개: 자원 체크
+  if (buyOrders.length === 0) {
+    // 매수 1개 걸기 위한 최소 예수금 계산
+    const baseTick = getTickSize(currentPrice);
+    const adjustedGap = Math.round(strategy.grid_gap / baseTick) * baseTick;
+    const buyPrice = adjustToTickSize(currentPrice - adjustedGap, "BUY");
+    const requiredDeposit = buyPrice * strategy.quantity_per_grid;
+
+    if (balance.availableDeposit >= requiredDeposit) {
+      // 예수금 충분 → 체결로 인한 부재 → 리밸런싱 필요
+      logger.info("매수 주문 없음 (체결) - 리밸런싱 필요", {
+        currentPrice,
+        availableDeposit: balance.availableDeposit,
+        sellOrderCount: sellOrders.length,
+      });
+      return true;
+    } else {
+      // 예수금 부족 → 자원 부족 → 리밸런싱 불필요
+      logger.info("매수 주문 없음 (자원 부족) - 리밸런싱 스킵", {
+        availableDeposit: balance.availableDeposit,
+        requiredDeposit,
+      });
+      return false;
+    }
+  }
+
+  // ✅ 정상 상태: 매수/매도 주문 모두 존재
+  const minPrice = Math.min(...buyOrders.map((o) => o.grid_price));
+  const maxPrice = Math.max(...sellOrders.map((o) => o.grid_price));
+
+  // 가격 그리드 이탈 체크
   return currentPrice > maxPrice || currentPrice < minPrice;
 }
 ```
 
 ### 결과
 
-- 현재가 298,000원 < 이론적 최대값 315,000원 → 그리드 범위 내
-- 리밸런싱 스킵 → 무한 루프 해결
+**시나리오 1 (자원 부족)**:
+- `sellableQty = 0` → 리밸런싱 스킵 → **무한 루프 방지**
+
+**시나리오 2 (체결)**:
+- `sellableQty = 5주 > 0` → 리밸런싱 실행 → 새 매도 주문 생성 ✅
 
 ### 참조
 
-- `features/grid-trader/lib/cron/checkRebalance.ts:56-84`
+- `features/grid-trader/lib/cron/checkRebalance.ts:27-93`
+- PRD: [prd.md - 4. 리밸런싱](./prd.md#4-리밸런싱)
 
 ---
 

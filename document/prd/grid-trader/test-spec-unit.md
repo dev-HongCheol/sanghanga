@@ -122,6 +122,55 @@ if (cancelledOrderIds.length > 0) {
 
 ---
 
+### 5. `checkRebalance.ts` - 그리드 이탈 감지 (v1.6.7)
+
+**요구사항**:
+1. 현재가가 그리드 범위를 벗어나면 리밸런싱 트리거
+2. **주문 불균형 감지 + 자원 체크**: 매수/매도 주문 0개 시 자원(예수금/보유수량) 확인
+
+**테스트 케이스**:
+
+**정상 범위 (리밸런싱 불필요)**:
+- 현재가 35,000원, 매수 주문 [34,000, 33,000, 32,000], 매도 주문 [36,000, 37,000, 38,000] → false
+- 현재가 34,500원 (그리드 중간) → false
+
+**그리드 이탈 (리밸런싱 필요)**:
+- 현재가 39,000원, 매도 최대가 38,000원 → true (상단 이탈)
+- 현재가 31,000원, 매수 최소가 32,000원 → true (하단 이탈)
+
+**주문 불균형 (v1.6.7 - 자원 체크)**:
+
+**매도 주문 0개**:
+- sellableQty = 5주 > 0, 매수 주문 3개 → true ✅ (체결로 인한 부재)
+- sellableQty = 0주, 매수 주문 3개 → false ❌ (보유 수량 부족 = 자원 부족)
+
+**매수 주문 0개**:
+- availableDeposit = 1,000,000원, requiredDeposit = 100,000원 → true ✅ (체결로 인한 부재)
+- availableDeposit = 10,000원, requiredDeposit = 100,000원 → false ❌ (예수금 부족 = 자원 부족)
+
+**미체결 주문 0개**:
+- 미체결 주문 0개 → false (deployGrid 트리거됨)
+
+**핵심 패턴**:
+```typescript
+// ✅ v1.6.7: 자원 체크로 무한 리밸런싱 방지
+if (sellOrders.length === 0) {
+  const sellableQty = Math.max(0, balance.totalQty - strategy.min_holding_limit);
+  return sellableQty > 0;  // 자원 충분하면 리밸런싱, 아니면 스킵
+}
+
+if (buyOrders.length === 0) {
+  const requiredDeposit = buyPrice * strategy.quantity_per_grid;
+  return balance.availableDeposit >= requiredDeposit;
+}
+```
+
+**배경**:
+- v1.5.8: "이론적 범위" 계산 → 매도 주문 없어도 리밸런싱 안 됨 (버그)
+- v1.6.7: 자원 체크 추가 → 체결로 인한 부재만 리밸런싱, 자원 부족은 스킵 (무한 반복 방지)
+
+---
+
 ## 테스트 환경
 
 - **프레임워크**: Vitest

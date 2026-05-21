@@ -190,14 +190,14 @@ export function startCronScheduler(): void {
 	logger.info("CronScheduler", "서버 시작 시 미체결 주문 정리 실행...", undefined, true);
 	cleanupStaleOrdersLogic()
 		.then((result) => {
-			if (result.cancelled > 0) {
+			if (result.success && result.cancelled > 0) {
 				logger.info(
 					"CronScheduler",
 					`서버 시작 시 미체결 주문 정리 완료: ${result.cancelled}건 CANCELLED 처리`,
 					undefined,
 					true
 				);
-			} else {
+			} else if (result.success) {
 				logger.info(
 					"CronScheduler",
 					"서버 시작 시 미체결 주문 정리 완료: 정리할 주문 없음",

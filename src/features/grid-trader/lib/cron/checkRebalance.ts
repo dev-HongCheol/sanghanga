@@ -10,6 +10,11 @@
  * - 활성 전략인데 미체결 주문이 없으면 자동으로 초기 그리드 배치 실행
  * - 서버 장애 후 재구동 시에도 자동으로 주문이 걸리도록 보장
  *
+ * **주문 불균형 감지** (v1.6.7):
+ * - 매수/매도 주문 0개 시 자원(예수금/보유수량) 체크
+ * - 자원 충분하면 리밸런싱 (체결로 인한 부재)
+ * - 자원 부족하면 스킵 (무한 리밸런싱 방지)
+ *
  * **동시 실행 방지**:
  * - DB 기반 mutex (PostgreSQL advisory lock) 사용
  * - 멀티 프로세스 환경에서도 중복 실행 방지
@@ -17,78 +22,130 @@
 
 import { getActiveStrategies, getPendingOrders } from "@/entities/grid-trader";
 import type { GridOrder, GridStrategy } from "@/entities/grid-trader";
+import { getBalance } from "@/shared/lib/cache/balance-cache";
 import { getPrice } from "@/shared/lib/cache/price-cache";
 import { logger } from "@/shared/lib/logger";
 import { withMutex } from "@/shared/lib/mutex/db-mutex";
-import { getTickSize } from "../adjustToTickSize";
+import { adjustToTickSize, getTickSize } from "../adjustToTickSize";
 import { deployGrid } from "../deployGrid";
+import { matchStockCode } from "../matchStockCode";
 import { rebalanceGrid } from "../rebalanceGrid";
 
 /**
- * 그리드 이탈 여부 체크
- * @description 현재가가 상단/하단 그리드 범위를 벗어났는지 확인
+ * 잔고 정보 인터페이스
+ */
+interface BalanceInfo {
+	/** 예수금 */
+	availableDeposit: number;
+	/** 총 보유 수량 */
+	totalQty: number;
+}
+
+/**
+ * 그리드 이탈 여부 체크 (v1.6.7)
+ * @description 현재가가 상단/하단 그리드 범위를 벗어났는지 또는 주문 불균형인지 확인
  *
- * **이탈 조건**:
- * - 현재가 > 최상단 그리드 가격 (모든 매도 주문 위로)
- * - 현재가 < 최하단 그리드 가격 (모든 매수 주문 아래로)
+ * **리밸런싱 조건**:
+ * 1. 현재가 > 최상단 매도 주문가 (상단 이탈)
+ * 2. 현재가 < 최하단 매수 주문가 (하단 이탈)
+ * 3. 매도 주문 0개 + sellableQty > 0 (체결로 인한 주문 부재)
+ * 4. 매수 주문 0개 + 예수금 충분 (체결로 인한 주문 부재)
  *
- * **보유 수량 부족 대응**:
- * - 매도 주문이 없는 경우 (보유 수량 부족으로 못 걸린 경우)
- * - 이론적 최대값 = 최고 매수가 + gap * (upper_grid_count + 1)
- * - 이를 상한으로 사용하여 불필요한 리밸런싱 방지
+ * **자원 체크로 무한 리밸런싱 방지**:
+ * - 매도 주문 0개 + sellableQty = 0 → 리밸런싱 스킵 (보유 수량 부족)
+ * - 매수 주문 0개 + 예수금 부족 → 리밸런싱 스킵 (예수금 부족)
  *
  * @param currentPrice - 현재가
  * @param pendingOrders - 미체결 주문 배열
  * @param strategy - 전략 설정
- * @returns 이탈 여부
+ * @param balance - 잔고 정보 (예수금, 보유 수량)
+ * @returns 이탈 여부 (true = 리밸런싱 필요)
  */
 function isGridOutOfRange(
 	currentPrice: number,
 	pendingOrders: GridOrder[],
-	strategy: GridStrategy
+	strategy: GridStrategy,
+	balance: BalanceInfo
 ): boolean {
 	if (pendingOrders.length === 0) return false;
 
-	const allPrices = pendingOrders.map((o) => o.grid_price);
-	const minPrice = Math.min(...allPrices);
-
-	// 매도 주문이 있는지 확인
+	const buyOrders = pendingOrders.filter((o) => o.order_type === "BUY");
 	const sellOrders = pendingOrders.filter((o) => o.order_type === "SELL");
 
-	let maxPrice: number;
-	if (sellOrders.length > 0) {
-		// 매도 주문이 있으면 실제 최대값 사용
-		maxPrice = Math.max(...sellOrders.map((o) => o.grid_price));
-	} else {
-		// 매도 주문이 없으면 (보유 수량 부족), 이론적 최대값 계산
-		const maxBuyPrice = Math.max(...allPrices);
+	// ✅ 매도 주문 0개: 자원 체크
+	if (sellOrders.length === 0) {
+		const sellableQty = Math.max(0, balance.totalQty - strategy.min_holding_limit);
 
-		// 이론적으로 매도 주문이 걸렸어야 할 최대 위치 계산
-		const baseTick = getTickSize(maxBuyPrice);
-		const adjustedGap = Math.round(strategy.grid_gap / baseTick) * baseTick;
+		if (sellableQty > 0) {
+			// 매도 가능 수량 있음 → 체결로 인한 부재 → 리밸런싱 필요
+			logger.info(
+				"CronCheckRebalance",
+				"매도 주문 없음 (체결) - 리밸런싱 필요",
+				{
+					currentPrice,
+					sellableQty,
+					buyOrderCount: buyOrders.length,
+				},
+				true
+			);
+			return true;
+		}
 
-		// 최고 매수가 + (gap * upper_grid_count) + 안전 마진(gap)
-		maxPrice = maxBuyPrice + adjustedGap * (strategy.upper_grid_count + 1);
-
+		// 보유 수량 부족 → 자원 부족 → 리밸런싱 불필요
 		logger.info(
 			"CronCheckRebalance",
-			"매도 주문 없음 - 이론적 최대값 사용",
+			"매도 주문 없음 (자원 부족) - 리밸런싱 스킵",
 			{
-				maxBuyPrice,
-				theoreticalMax: maxPrice,
-				upperGridCount: strategy.upper_grid_count,
-				adjustedGap,
+				totalQty: balance.totalQty,
+				minHoldingLimit: strategy.min_holding_limit,
 			},
 			true
 		);
+		return false;
 	}
 
-	// 현재가가 그리드 범위를 벗어남
-	if (currentPrice > maxPrice || currentPrice < minPrice) {
-		return true;
+	// ✅ 매수 주문 0개: 자원 체크
+	if (buyOrders.length === 0) {
+		// 매수 1개 걸기 위한 최소 예수금 계산
+		const baseTick = getTickSize(currentPrice);
+		const adjustedGap = Math.round(strategy.grid_gap / baseTick) * baseTick;
+		const buyPrice = adjustToTickSize(currentPrice - adjustedGap, "down");
+		const requiredDeposit = buyPrice * strategy.quantity_per_grid;
+
+		if (balance.availableDeposit >= requiredDeposit) {
+			// 예수금 충분 → 체결로 인한 부재 → 리밸런싱 필요
+			logger.info(
+				"CronCheckRebalance",
+				"매수 주문 없음 (체결) - 리밸런싱 필요",
+				{
+					currentPrice,
+					availableDeposit: balance.availableDeposit,
+					sellOrderCount: sellOrders.length,
+				},
+				true
+			);
+			return true;
+		}
+
+		// 예수금 부족 → 자원 부족 → 리밸런싱 불필요
+		logger.info(
+			"CronCheckRebalance",
+			"매수 주문 없음 (자원 부족) - 리밸런싱 스킵",
+			{
+				availableDeposit: balance.availableDeposit,
+				requiredDeposit,
+			},
+			true
+		);
+		return false;
 	}
 
-	return false;
+	// ✅ 정상 상태: 매수/매도 주문 모두 존재
+	const minPrice = Math.min(...buyOrders.map((o) => o.grid_price));
+	const maxPrice = Math.max(...sellOrders.map((o) => o.grid_price));
+
+	// 가격 그리드 이탈 체크
+	return currentPrice > maxPrice || currentPrice < minPrice;
 }
 
 /**
@@ -128,7 +185,23 @@ async function checkRebalanceInternal() {
 					continue;
 				}
 
-				// 2. 미체결 주문 조회
+				// 2. 잔고 조회 (메모리 캐시에서)
+				const balanceInfo = getBalance();
+
+				if (!balanceInfo) {
+					logger.warn("CronCheckRebalance", "잔고 캐시 없음 (잔고 동기화 대기 중)", {
+						stockCode: strategy.stock_code,
+					});
+					results.push({
+						strategyId: strategy.id,
+						stockCode: strategy.stock_code,
+						rebalanced: false,
+						reason: "잔고 캐시 없음",
+					});
+					continue;
+				}
+
+				// 3. 미체결 주문 조회
 				const pendingOrders = await getPendingOrders(strategy.id, true);
 
 				// 2-1. 미체결 주문이 없으면 자동으로 그리드 배치 (서버 재시작 대응)
@@ -175,8 +248,23 @@ async function checkRebalanceInternal() {
 					continue;
 				}
 
-				// 3. 그리드 이탈 여부 체크
-				const isOutOfRange = isGridOutOfRange(priceInfo.currentPrice, pendingOrders, strategy);
+				// 4. 보유 수량 계산
+				const holding = balanceInfo.holdings.find((h) => matchStockCode(h.stockCode, strategy.stock_code));
+				const totalQty = holding?.quantity ?? 0;
+
+				// 5. 잔고 정보 생성
+				const balance: BalanceInfo = {
+					availableDeposit: balanceInfo.estimatedDepositAsset,
+					totalQty,
+				};
+
+				// 6. 그리드 이탈 여부 체크
+				const isOutOfRange = isGridOutOfRange(
+					priceInfo.currentPrice,
+					pendingOrders,
+					strategy,
+					balance
+				);
 
 				if (!isOutOfRange) {
 					results.push({
@@ -188,7 +276,7 @@ async function checkRebalanceInternal() {
 					continue;
 				}
 
-				// 4. 리밸런싱 실행
+				// 7. 리밸런싱 실행
 				const gridPrices = pendingOrders.map((o) => o.grid_price);
 				logger.info("CronCheckRebalance", "그리드 이탈 감지 - 리밸런싱 시작", {
 					strategyId: strategy.id,
